@@ -13,6 +13,12 @@ Il simulatore integra le API **Company di Openapi.it** ([Documentazione OAS uffi
 
 ---
 
+## 📸 Anteprima
+
+![Anteprima Italian Work Cost Simulator](docs/screenshot.png)
+
+---
+
 ## ✨ Funzionalità Principali
 
 1. **Integrazione Visure e Bilanci Openapi.it (`/IT-advanced`, `/IT-full`, `/IT-marketing`, `/IT-start`)**:

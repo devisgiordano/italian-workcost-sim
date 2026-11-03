@@ -1,0 +1,37 @@
+{
+  "name": "italian-workcost-sim",
+  "version": "1.0.0",
+  "description": "Italian Work Cost Simulator — Open source Employee (RAL) vs Freelance (Partita IVA) employer cost & tax wedge simulator powered by Openapi.it",
+  "author": "Devis Giordano <https://github.com/devisgiordano>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/devisgiordano/italian-workcost-sim.git"
+  },
+  "homepage": "https://devisgiordano.github.io/italian-workcost-sim/",
+  "bugs": {
+    "url": "https://github.com/devisgiordano/italian-workcost-sim/issues"
+  },
+  "keywords": [
+    "italian-workcost-sim",
+    "tax-wedge",
+    "employee-vs-freelance",
+    "costo-aziendale",
+    "simulatore-ral",
+    "partita-iva",
+    "regime-forfettario",
+    "cuneo-fiscale",
+    "inps",
+    "tfr",
+    "irap",
+    "openapi-it",
+    "typescript"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}

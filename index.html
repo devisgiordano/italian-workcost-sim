@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Italian Work Cost Simulator — Dipendente vs Partita IVA | Openapi.it</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    input[type="range"] {
+      accent-color: #4f46e5;
+    }
+    @media print {
+      .no-print {
+        display: none !important;
+      }
+      body {
+        background: #ffffff !important;
+      }
+      .print-break-inside-avoid {
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body class="min-h-screen antialiased selection:bg-indigo-600 selection:text-white">
+
+  <!-- TOP NAVBAR -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-extrabold text-lg shadow-xs">
+          €
+        </div>
+        <div>
+          <h1 class="text-lg sm:text-xl font-extrabold tracking-tight text-slate-900">
+            Italian WorkCost <span class="text-indigo-600">Sim</span> <span class="text-slate-300 font-normal mx-1">|</span> <span class="text-base sm:text-lg font-bold text-slate-700">Dipendente vs Partita IVA</span>
+          </h1>
+          <p class="text-xs text-slate-500">
+            Analisi comparativa fiscale, INPS/INAIL/TFR, Cuneo Fiscale e calibrazione su Visura Camerale <span class="font-semibold text-slate-700">Openapi.it</span>
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2.5 no-print">
+        <span id="api-status-indicator" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300">
+          <span class="w-2 h-2 rounded-full bg-amber-500"></span> Modalità Sandbox
+        </span>
+        <button id="btn-open-api-modal" type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition">
+          ⚙ Configura API Key
+        </button>
+        <button id="btn-export-json" type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 transition">
+          ⇩ JSON
+        </button>
+        <button id="btn-print-report" type="button" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white transition">
+          🖨 Stampa / PDF
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT CONTAINER -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- SEZIONE 1: INTEGRAZIONE VISURA AZIENDALE OPENAPI.IT -->
+    <section class="bg-white rounded-2xl border border-slate-200 shadow-xs p-5">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider rounded bg-indigo-100 text-indigo-700">Openapi.it Company API</span>
+            <h2 class="text-base font-bold text-slate-900">Calibrazione Automatica tramite Partita IVA dell'Azienda</h2>
+          </div>
+          <p class="text-xs text-slate-500">
+            Inserisci la Partita IVA o il Codice Fiscale dell'azienda valutata per estrarre da <code>company.openapi.com</code> codice ATECO, Regione (IRAP/Addizionali), organico dipendenti (scaglioni FIS/CIGS) e costo medio del personale a bilancio.
+          </p>
+        </div>
+
+        <form id="form-visura-search" class="flex flex-wrap sm:flex-nowrap items-center gap-2 no-print">
+          <select id="select-openapi-endpoint" class="rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 focus:border-indigo-500 focus:outline-none" title="Endpoint Openapi.it">
+            <option value="/IT-advanced">GET /IT-advanced (Bilancio + ATECO)</option>
+            <option value="/IT-full">GET /IT-full (Completo + KPI/EBITDA)</option>
+            <option value="/IT-marketing">GET /IT-marketing (Marketing + Dipendenti)</option>
+            <option value="/IT-start">GET /IT-start (Anagrafica + Sede)</option>
+          </select>
+          <input
+            id="input-company-vat"
+            type="text"
+            placeholder="Es. 12485671007"
+            maxlength="16"
+            class="w-44 sm:w-52 rounded-xl border border-slate-300 px-3.5 py-2 text-sm font-mono text-slate-900 placeholder:text-slate-400 focus:border-indigo-600 focus:outline-none"
+          />
+          <button
+            id="btn-search-visura"
+            type="submit"
+            class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-xs transition cursor-pointer"
+          >
+            Carica Visura
+          </button>
+        </form>
+      </div>
+
+      <!-- Quick Sandbox Presets -->
+      <div class="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-2 no-print">
+        <span class="text-xs font-medium text-slate-500">Aziende di test (Sandbox OAS Openapi.it):</span>
+        <button type="button" data-preset-vat="12485671007" class="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 border border-slate-200 transition cursor-pointer">
+          12485671007 • OPENAPI S.P.A. (IT Software, 14 dip., Roma)
+        </button>
+        <button type="button" data-preset-vat="12345678910" class="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 border border-slate-200 transition cursor-pointer">
+          12345678910 • OPENAPI TEST S.P.A. (Micro 5 dip., Roma)
+        </button>
+        <button type="button" data-preset-vat="08973210964" class="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 border border-slate-200 transition cursor-pointer">
+          08973210964 • OFF. MECCANICHE S.R.L. (Industria 38 dip., Milano)
+        </button>
+        <button type="button" data-preset-vat="04128950271" class="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 border border-slate-200 transition cursor-pointer">
+          04128950271 • MEDIOVENETO S.P.A. (Assicurazioni Pro-Rata IVA, 62 dip.)
+        </button>
+      </div>
+
+      <div id="visura-status-msg" class="hidden"></div>
+
+      <!-- SCHEDA VISURA CARICATA -->
+      <div id="visura-card-container" class="hidden mt-4 pt-4 border-t border-slate-200">
+        <div class="bg-slate-50 rounded-xl border border-slate-200 p-4 space-y-4">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div class="flex flex-wrap items-center gap-2">
+                <h3 id="visura-company-name" class="text-base font-extrabold text-slate-900">OPENAPI S.P.A.</h3>
+                <span id="visura-status-badge" class="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800">ATTIVA</span>
+                <span id="visura-source-badge" class="px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-100 text-indigo-800">Sandbox OAS</span>
+              </div>
+              <p class="text-xs text-slate-600 mt-0.5">
+                <span id="visura-legal-form" class="font-medium">SOCIETÀ PER AZIONI</span> •
+                <span id="visura-vat-code" class="font-mono">P.IVA 12485671007</span> •
+                <span id="visura-rea-code" class="font-mono">REA RM-1378273</span> •
+                <span id="visura-pec-sdi">PEC: openapi@legalmail.it</span>
+              </p>
+              <p id="visura-address" class="text-xs text-slate-500 mt-0.5"></p>
+              <p class="text-xs text-slate-700 mt-1">
+                <span class="font-semibold">Classificazione ATECO:</span>
+                <span id="visura-ateco" class="font-mono text-indigo-700"></span>
+              </p>
+            </div>
+
+            <div class="flex items-center gap-2 no-print">
+              <button
+                id="btn-use-visura-salary"
+                type="button"
+                class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition cursor-pointer"
+              >
+                Applica Stipendio Medio da Bilancio
+              </button>
+              <button
+                id="btn-clear-visura"
+                type="button"
+                class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white hover:bg-rose-50 text-slate-600 hover:text-rose-700 border border-slate-300 transition cursor-pointer"
+              >
+                ✕ Rimuovi
+              </button>
+            </div>
+          </div>
+
+          <!-- KPI di Bilancio da Openapi.it -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="bg-white rounded-lg p-3 border border-slate-200">
+              <div class="text-[11px] font-semibold uppercase text-slate-400">Fatturato Ultimo Bilancio</div>
+              <div id="visura-turnover" class="text-sm font-bold font-mono text-slate-900 mt-0.5">—</div>
+            </div>
+            <div class="bg-white rounded-lg p-3 border border-slate-200">
+              <div class="text-[11px] font-semibold uppercase text-slate-400">Organico Dipendenti</div>
+              <div id="visura-employees" class="text-sm font-bold font-mono text-slate-900 mt-0.5">—</div>
+            </div>
+            <div class="bg-white rounded-lg p-3 border border-slate-200">
+              <div class="text-[11px] font-semibold uppercase text-slate-400">Costo Totale Personale (B9)</div>
+              <div id="visura-staff-cost" class="text-sm font-bold font-mono text-slate-900 mt-0.5">—</div>
+            </div>
+            <div class="bg-white rounded-lg p-3 border border-slate-200">
+              <div class="text-[11px] font-semibold uppercase text-slate-400">Stipendio Lordo Medio Annuo</div>
+              <div id="visura-avg-salary" class="text-sm font-bold font-mono text-indigo-700 mt-0.5">—</div>
+            </div>
+          </div>
+
+          <!-- Log di calibrazione automatica -->
+          <div class="bg-indigo-50/60 border border-indigo-100 rounded-lg p-3">
+            <div class="text-[11px] font-bold uppercase tracking-wider text-indigo-800 mb-1">
+              Parametri Simulatore Calibrati Automaticamente dalla Visura:
+            </div>
+            <ul id="visura-calibration-list" class="space-y-1"></ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEZIONE 2: SELETTORE MODALITÀ DI CONFRONTO -->
+    <section class="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 no-print">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-sm font-bold uppercase tracking-wider text-slate-400">Obiettivo della Simulazione</h2>
+          <p class="text-xs text-slate-600 mt-0.5">
+            Scegli se confrontare una RAL/Compenso specifico, oppure calcolare a ritroso i costi a parità di Netto per il lavoratore o di Budget aziendale.
+          </p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button type="button" data-sim-mode="PARITA_LORDO" class="sim-mode-btn px-4 py-2.5 rounded-xl text-sm font-semibold cursor-pointer">
+            1. Input Diretto (RAL vs Compenso P.IVA)
+          </button>
+          <button type="button" data-sim-mode="PARITA_NETTO" class="sim-mode-btn px-4 py-2.5 rounded-xl text-sm font-semibold cursor-pointer">
+            2. A Parità di Netto Lavoratore
+          </button>
+          <button type="button" data-sim-mode="PARITA_COSTO_AZIENDA" class="sim-mode-btn px-4 py-2.5 rounded-xl text-sm font-semibold cursor-pointer">
+            3. A Parità di Budget Aziendale
+          </button>
+        </div>
+      </div>
+
+      <!-- Box Input Target (visibile in modalità 2 e 3) -->
+      <div id="box-target-mode" class="hidden mt-4 pt-4 border-t border-slate-200 bg-indigo-50/50 rounded-xl p-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="space-y-1">
+            <label id="label-target-value" for="input-target-value" class="block text-sm font-bold text-indigo-950">
+              Target Netto Annuo Lavoratore desiderato (€)
+            </label>
+            <p class="text-xs text-indigo-700">
+              Il motore calcola automaticamente la RAL Dipendente e il Fatturato P.IVA necessari per centrare esattamente questo obiettivo.
+            </p>
+          </div>
+          <div class="flex items-center gap-3">
+            <input
+              id="slider-target-value"
+              type="range"
+              min="12000"
+              max="180000"
+              step="500"
+              value="35000"
+              class="w-40 sm:w-56"
+            />
+            <div class="relative">
+              <input
+                id="input-target-value"
+                type="number"
+                min="5000"
+                max="500000"
+                step="500"
+                value="35000"
+                class="w-36 rounded-xl border border-indigo-300 bg-white px-3 py-2 text-right font-mono text-base font-bold text-indigo-900 focus:border-indigo-600 focus:outline-none"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEZIONE 3: GRIGLIA PRINCIPALE (PARAMETRI A SINISTRA, RISULTATI A DESTRA) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+      <!-- COLONNA SINISTRA: PARAMETRI DI INPUT (5 COLONNE SU 12) -->
+      <div class="lg:col-span-5 space-y-6 no-print">
+
+        <!-- CARD A: PROFILO FISCALE AZIENDA -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 class="text-sm font-extrabold uppercase tracking-wider text-slate-800">
+              🏢 1. Profilo Fiscale & INPS Azienda
+            </h3>
+            <span class="text-[11px] font-medium text-indigo-600">Auto-calibrato da Visura</span>
+          </div>
+
+          <div class="space-y-3">
+            <div>
+              <label for="select-region" class="block text-xs font-semibold text-slate-700 mb-1">
+                Regione Sede Operativa (determina IRAP e Addizionali)
+              </label>
+              <select id="select-region" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:border-indigo-600 focus:outline-none"></select>
+            </div>
+
+            <div>
+              <label for="select-sector" class="block text-xs font-semibold text-slate-700 mb-1">
+                Settore ATECO / CCNL (determina INPS, INAIL e IVA)
+              </label>
+              <select id="select-sector" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:border-indigo-600 focus:outline-none"></select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label for="input-company-employees" class="block text-xs font-semibold text-slate-700 mb-1">
+                  N° Dipendenti Azienda (FIS/CIGS)
+                </label>
+                <input
+                  id="input-company-employees"
+                  type="number"
+                  min="1"
+                  max="100000"
+                  value="14"
+                  class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm font-mono text-slate-900 focus:border-indigo-600 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label for="input-vat-deductibility" class="block text-xs font-semibold text-slate-700 mb-1">
+                  Detraibilità IVA Azienda (%)
+                </label>
+                <input
+                  id="input-vat-deductibility"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value="100"
+                  class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm font-mono text-slate-900 focus:border-indigo-600 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <label class="flex items-center gap-2.5 pt-1 cursor-pointer">
+              <input id="check-tax-shield" type="checkbox" checked class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500" />
+              <span class="text-xs font-medium text-slate-700">
+                Calcola risparmio fiscale IRES (24%) e IRAP regionale sul costo deducibile
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <!-- CARD B: PARAMETRI DIPENDENTE SUBORDINATO -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 class="text-sm font-extrabold uppercase tracking-wider text-indigo-900">
+              👔 2. Inquadramento Dipendente
+            </h3>
+            <span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-50 text-indigo-700">Subordinato</span>
+          </div>
+
+          <div id="note-inverse-mode" class="hidden text-xs bg-amber-50 border border-amber-200 text-amber-800 rounded-lg p-2.5">
+            ⚡ Modalità calcolo inverso attiva: la RAL e il Compenso P.IVA vengono ricalcolati automaticamente dal Target.
+          </div>
+
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label for="input-employee-ral" class="text-xs font-bold text-slate-700">
+                RAL — Retribuzione Annua Lorda (€)
+              </label>
+              <input
+                id="input-employee-ral"
+                type="number"
+                min="10000"
+                max="300000"
+                step="500"
+                value="40000"
+                class="w-32 rounded-lg border border-slate-300 px-2.5 py-1 text-right font-mono text-sm font-bold text-indigo-900"
+              />
+            </div>
+            <input
+              id="slider-employee-ral"
+              type="range"
+              min="15000"
+              max="150000"
+              step="500"
+              value="40000"
+              class="w-full"
+            />
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label for="select-qualification" class="block text-xs font-semibold text-slate-700 mb-1">
+                Qualifica Contrattuale
+              </label>
+              <select id="select-qualification" class="w-full rounded-xl border border-slate-300 bg-white px-2.5 py-2 text-xs font-medium text-slate-800"></select>
+            </div>
+            <div>
+              <label for="select-contract-type" class="block text-xs font-semibold text-slate-700 mb-1">
+                Tipologia Contratto
+              </label>
+              <select id="select-contract-type" class="w-full rounded-xl border border-slate-300 bg-white px-2.5 py-2 text-xs font-medium text-slate-800">
+                <option value="INDETERMINATO">Tempo Indeterminato (Ded. IRAP 100%)</option>
+                <option value="DETERMINATO">Tempo Determinato (+1,4% NASpI, No Ded. IRAP)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label for="select-mensilita" class="block text-xs font-semibold text-slate-700 mb-1">
+                Mensilità CCNL
+              </label>
+              <select id="select-mensilita" class="w-full rounded-xl border border-slate-300 bg-white px-2.5 py-2 text-xs font-medium text-slate-800">
+                <option value="13">13 Mensilità (Tredicesima)</option>
+                <option value="14" selected>14 Mensilità (13ª + 14ª)</option>
+                <option value="12">12 Mensilità</option>
+              </select>
+            </div>
+            <div>
+              <label for="input-working-days" class="block text-xs font-semibold text-slate-700 mb-1">
+                Giorni Lavorati Effettivi/Anno
+              </label>
+              <input
+                id="input-working-days"
+                type="number"
+                min="100"
+                max="310"
+                value="220"
+                class="w-full rounded-xl border border-slate-300 px-3 py-1.5 text-sm font-mono text-slate-900"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label for="select-incentive" class="block text-xs font-semibold text-slate-700 mb-1">
+              Agevolazioni / Sgravi Assunzione
+            </label>
+            <select id="select-incentive" class="w-full rounded-xl border border-slate-300 bg-white px-2.5 py-2 text-xs font-medium text-slate-800"></select>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2.5 pt-1">
+            <div>
+              <label for="input-meal-voucher" class="block text-[11px] font-semibold text-slate-600 mb-1">
+                Buono Pasto (€/gg)
+              </label>
+              <input
+                id="input-meal-voucher"
+                type="number"
+                min="0"
+                max="20"
+                step="0.5"
+                value="8"
+                class="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-mono text-slate-900"
+              />
+            </div>
+            <div>
+              <label for="input-welfare-annual" class="block text-[11px] font-semibold text-slate-600 mb-1">
+                Welfare (€/anno)
+              </label>
+              <input
+                id="input-welfare-annual"
+                type="number"
+                min="0"
+                max="10000"
+                step="100"
+                value="500"
+                class="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-mono text-slate-900"
+              />
+            </div>
+            <div>
+              <label for="input-payroll-admin" class="block text-[11px] font-semibold text-slate-600 mb-1">
+                Costo LUL (€/anno)
+              </label>
+              <input
+                id="input-payroll-admin"
+                type="number"
+                min="0"
+                max="5000"
+                step="50"
+                value="450"
+                class="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-mono text-slate-900"
+              />
+            </div>
+          </div>
+
+          <label class="flex items-center gap-2.5 pt-1 cursor-pointer">
+            <input id="check-include-tfr" type="checkbox" checked class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500" />
+            <span class="text-xs font-medium text-slate-700">
+              Includi il TFR maturato (~6,91% RAL) nel valore patrimoniale netto del dipendente
+            </span>
+          </label>
+        </div>
+
+        <!-- CARD C: PARAMETRI PROFESSIONISTA PARTITA IVA -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 class="text-sm font-extrabold uppercase tracking-wider text-emerald-900">
+              💼 3. Inquadramento Partita IVA
+            </h3>
+            <span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700">Lavoro Autonomo</span>
+          </div>
+
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label for="input-piva-gross" class="text-xs font-bold text-slate-700">
+                Compenso Annuo Imponibile P.IVA (€)
+              </label>
+              <input
+                id="input-piva-gross"
+                type="number"
+                min="5000"
+                max="300000"
+                step="500"
+                value="40000"
+                class="w-32 rounded-lg border border-slate-300 px-2.5 py-1 text-right font-mono text-sm font-bold text-emerald-900"
+              />
+            </div>
+            <input
+              id="slider-piva-gross"
+              type="range"
+              min="15000"
+              max="150000"
+              step="500"
+              value="40000"
+              class="w-full"
+            />
+            <label class="flex items-center gap-2 mt-1.5 cursor-pointer">
+              <input id="check-sync-piva-ral" type="checkbox" checked class="w-3.5 h-3.5 rounded text-emerald-600" />
+              <span class="text-xs text-slate-600">Sincronizza compenso base P.IVA = RAL Dipendente</span>
+            </label>
+          </div>
+
+          <div>
+            <label for="select-piva-regime" class="block text-xs font-semibold text-slate-700 mb-1">
+              Regime Fiscale Professionista
+            </label>
+            <select id="select-piva-regime" class="w-full rounded-xl border border-slate-300 bg-white px-2.5 py-2 text-xs font-medium text-slate-800">
+              <option value="FORFETTARIO_5">Regime Forfettario Start-up (Imposta Sostitutiva 5% • Esente IVA)</option>
+              <option value="FORFETTARIO_15" selected>Regime Forfettario Ordinario (Imposta Sostitutiva 15% • Esente IVA)</option>
+              <option value="ORDINARIO">Regime Ordinario / Semplificato (Scaglioni IRPEF + IVA 22%)</option>
+            </select>
+          </div>
+
+          <div id="wrapper-forfettario-coeff">
+            <label for="select-forfettario-coeff" class="block text-xs font-semibold text-slate-700 mb-1">
+              Coefficiente di Redditività ATECO (Forfettario)
+            </label>
+            <select id="select-forfettario-coeff" class="w-full rounded-xl border border-slate-300 bg-white px-2.5 py-2 text-xs font-medium text-slate-800"></select>
+          </div>
+
+          <div>
+            <label for="select-cassa" class="block text-xs font-semibold text-slate-700 mb-1">
+              Cassa Previdenziale Professionista
+            </label>
+            <select id="select-cassa" class="w-full rounded-xl border border-slate-300 bg-white px-2.5 py-2 text-xs font-medium text-slate-800"></select>
+          </div>
+
+          <label id="wrapper-rivalsa-inps" class="flex items-center gap-2.5 cursor-pointer">
+            <input id="check-rivalsa-inps" type="checkbox" checked class="w-4 h-4 rounded text-emerald-600" />
+            <span class="text-xs font-medium text-slate-700">
+              Addebita in fattura la Rivalsa INPS del 4% a carico dell'azienda
+            </span>
+          </label>
+
+          <div class="grid grid-cols-2 gap-3 pt-1">
+            <div>
+              <label for="input-piva-expenses" class="block text-xs font-semibold text-slate-700 mb-1">
+                Costi Annui Professionista (€)
+              </label>
+              <input
+                id="input-piva-expenses"
+                type="number"
+                min="0"
+                max="100000"
+                step="100"
+                value="1200"
+                class="w-full rounded-xl border border-slate-300 px-3 py-1.5 text-sm font-mono text-slate-900"
+              />
+            </div>
+            <div>
+              <label for="input-piva-days" class="block text-xs font-semibold text-slate-700 mb-1">
+                Giorni Fatturati / Anno
+              </label>
+              <input
+                id="input-piva-days"
+                type="number"
+                min="1"
+                max="365"
+                value="220"
+                class="w-full rounded-xl border border-slate-300 px-3 py-1.5 text-sm font-mono text-slate-900"
+              />
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- COLONNA DESTRA: DASHBOARD RISULTATI E CONFRONTO (7 COLONNE SU 12) -->
+      <div class="lg:col-span-7 space-y-6">
+
+        <!-- 1. EXECUTIVE KPI CARDS -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <!-- Costo Azienda Dipendente -->
+          <div class="rounded-2xl p-5 bg-white border-2 border-indigo-100 shadow-xs">
+            <div class="text-xs font-bold uppercase tracking-wider text-indigo-600">Costo Totale Dipendente</div>
+            <div id="kpi-emp-company-cost" class="text-2xl font-extrabold font-mono text-slate-900 mt-1">€ 56.120</div>
+            <div id="kpi-emp-company-sub" class="text-xs text-slate-500 mt-1">€ 4.677/mese • 1,40x RAL</div>
+            <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
+              <span class="text-slate-500">Post IRES/IRAP:</span>
+              <span id="kpi-emp-after-tax" class="font-mono font-bold text-indigo-900">€ 39.940</span>
+            </div>
+          </div>
+
+          <!-- Costo Azienda P.IVA -->
+          <div class="rounded-2xl p-5 bg-white border-2 border-emerald-100 shadow-xs">
+            <div class="text-xs font-bold uppercase tracking-wider text-emerald-600">Costo Totale Partita IVA</div>
+            <div id="kpi-piva-company-cost" class="text-2xl font-extrabold font-mono text-slate-900 mt-1">€ 41.624</div>
+            <div id="kpi-piva-company-sub" class="text-xs text-slate-500 mt-1">€ 3.469/mese</div>
+            <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
+              <span class="text-slate-500">Post IRES/IRAP:</span>
+              <span id="kpi-piva-after-tax" class="font-mono font-bold text-emerald-900">€ 29.628</span>
+            </div>
+          </div>
+
+          <!-- Differenza / Risparmio -->
+          <div id="card-kpi-saving" class="rounded-2xl p-5 bg-emerald-700 text-white shadow-xs">
+            <div id="kpi-cost-diff-title" class="text-xs font-bold uppercase tracking-wider text-emerald-100">
+              Risparmio Azienda con P.IVA
+            </div>
+            <div id="kpi-cost-diff-val" class="text-2xl font-extrabold font-mono mt-1">- € 14.496/anno</div>
+            <div id="kpi-cost-diff-sub" class="text-xs text-emerald-100 mt-2 leading-snug">
+              Risparmio sul costo aziendale complessivo
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. CONFRONTO NETTO IN TASCA AL LAVORATORE & SCOMPOSIZIONE CUNEO FISCALE -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 space-y-5 print-break-inside-avoid">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+            <div>
+              <h3 class="text-base font-extrabold text-slate-900">
+                Quanto Resta in Tasca al Lavoratore vs Cuneo Fiscale
+              </h3>
+              <p class="text-xs text-slate-500">
+                Scomposizione di ogni euro speso dall'azienda tra Netto Lavoratore, Imposte e Contributi Previdenziali.
+              </p>
+            </div>
+            <div id="kpi-worker-net-diff" class="text-xs font-semibold text-emerald-700"></div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="rounded-xl bg-indigo-50/50 border border-indigo-100 p-3.5">
+              <div class="text-xs font-bold text-indigo-900">Valore Netto Annuo Dipendente</div>
+              <div id="kpi-emp-worker-net" class="text-xl font-extrabold font-mono text-indigo-700 mt-0.5">€ 32.450</div>
+              <div id="kpi-emp-worker-net-sub" class="text-[11px] text-slate-600 mt-0.5"></div>
+            </div>
+            <div class="rounded-xl bg-emerald-50/50 border border-emerald-100 p-3.5">
+              <div class="text-xs font-bold text-emerald-900">Valore Netto Annuo Partita IVA</div>
+              <div id="kpi-piva-worker-net" class="text-xl font-extrabold font-mono text-emerald-700 mt-0.5">€ 29.850</div>
+              <div id="kpi-piva-worker-net-sub" class="text-[11px] text-slate-600 mt-0.5"></div>
+            </div>
+          </div>
+
+          <!-- Stacked Bars -->
+          <div class="space-y-4">
+            <!-- Barra Dipendente -->
+            <div class="space-y-1.5">
+              <div class="flex justify-between text-xs font-semibold">
+                <span class="text-slate-800">👔 Struttura Costo Dipendente</span>
+                <span class="text-slate-600">
+                  Netto+Benefit: <strong id="legend-emp-net" class="text-indigo-700"></strong> •
+                  Cuneo: <strong id="legend-emp-wedge" class="text-rose-600"></strong>
+                </span>
+              </div>
+              <div class="w-full h-5 bg-slate-100 rounded-full overflow-hidden flex">
+                <div id="bar-emp-net" class="bg-indigo-600 h-full transition-all duration-300" title="Netto Lavoratore + Benefit/TFR"></div>
+                <div id="bar-emp-worker-tax" class="bg-amber-400 h-full transition-all duration-300" title="IRPEF + INPS a carico Lavoratore"></div>
+                <div id="bar-emp-company-tax" class="bg-rose-500 h-full transition-all duration-300" title="INPS + INAIL + Oneri a carico Azienda"></div>
+              </div>
+            </div>
+
+            <!-- Barra P.IVA -->
+            <div class="space-y-1.5">
+              <div class="flex justify-between text-xs font-semibold">
+                <span class="text-slate-800">💼 Struttura Costo Partita IVA</span>
+                <span class="text-slate-600">
+                  Netto P.IVA: <strong id="legend-piva-net" class="text-emerald-700"></strong> •
+                  Tasse/INPS/Spese: <strong id="legend-piva-wedge" class="text-amber-600"></strong>
+                </span>
+              </div>
+              <div class="w-full h-5 bg-slate-100 rounded-full overflow-hidden flex">
+                <div id="bar-piva-net" class="bg-emerald-600 h-full transition-all duration-300" title="Netto Professionista"></div>
+                <div id="bar-piva-tax" class="bg-amber-400 h-full transition-all duration-300" title="Contributi Cassa/INPS + Imposta Sostitutiva/IRPEF"></div>
+                <div id="bar-piva-other" class="bg-rose-400 h-full transition-all duration-300" title="Spese gestione / IVA indetraibile"></div>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-4 text-[11px] text-slate-500 pt-1">
+              <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-xs bg-indigo-600"></span> Netto Dipendente</span>
+              <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-xs bg-emerald-600"></span> Netto Partita IVA</span>
+              <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-xs bg-amber-400"></span> Imposte & Contributi Lavoratore</span>
+              <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-xs bg-rose-500"></span> Contributi & Oneri Azienda</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. TARIFFE DI PAREGGIO (BREAK-EVEN POINT) -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 print-break-inside-avoid">
+          <h3 class="text-sm font-extrabold uppercase tracking-wider text-slate-800 mb-3">
+            🎯 Analisi di Break-Even (Tariffa Equivalente Partita IVA)
+          </h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="rounded-xl border border-slate-200 p-4 flex flex-col justify-between bg-slate-50/60">
+              <div>
+                <div class="text-xs font-bold text-slate-700">
+                  Compenso P.IVA di Pareggio per l'Azienda
+                </div>
+                <p class="text-[11px] text-slate-500 mt-0.5">
+                  Fatturato base P.IVA che genera per l'azienda esattamente lo stesso costo lordo del dipendente attuale:
+                </p>
+                <div class="mt-2 flex items-baseline gap-2">
+                  <span id="be-cost-annual" class="text-lg font-extrabold font-mono text-slate-900">€ 53.900</span>
+                  <span id="be-cost-daily" class="text-xs font-mono font-semibold text-indigo-600">€ 245 / giorno</span>
+                </div>
+              </div>
+              <button
+                id="btn-apply-breakeven-cost"
+                type="button"
+                class="mt-3 w-full py-1.5 px-3 rounded-lg text-xs font-semibold bg-white hover:bg-indigo-50 text-indigo-700 border border-indigo-200 transition cursor-pointer no-print"
+              >
+                Applica questo compenso alla simulazione →
+              </button>
+            </div>
+
+            <div class="rounded-xl border border-slate-200 p-4 flex flex-col justify-between bg-slate-50/60">
+              <div>
+                <div class="text-xs font-bold text-slate-700">
+                  Compenso P.IVA di Pareggio per il Lavoratore
+                </div>
+                <p class="text-[11px] text-slate-500 mt-0.5">
+                  Fatturato base P.IVA necessario per garantire al professionista lo stesso valore netto (+TFR/benefit) del dipendente:
+                </p>
+                <div class="mt-2 flex items-baseline gap-2">
+                  <span id="be-net-annual" class="text-lg font-extrabold font-mono text-slate-900">€ 42.100</span>
+                  <span id="be-net-daily" class="text-xs font-mono font-semibold text-emerald-700">€ 191 / giorno</span>
+                </div>
+              </div>
+              <button
+                id="btn-apply-breakeven-net"
+                type="button"
+                class="mt-3 w-full py-1.5 px-3 rounded-lg text-xs font-semibold bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 transition cursor-pointer no-print"
+              >
+                Applica questo compenso alla simulazione →
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. IMPATTO SUL BILANCIO AZIENDALE (SOLO CON VISURA OPENAPI.IT ATTIVA) -->
+        <div id="balance-impact-panel" class="hidden bg-indigo-950 text-white rounded-2xl p-5 space-y-4 print-break-inside-avoid">
+          <div class="flex items-center justify-between">
+            <div>
+              <span class="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-indigo-800 text-indigo-200">
+                Analisi Finanziaria su Bilancio Openapi.it
+              </span>
+              <h3 class="text-base font-bold mt-1">
+                Incidenza della Risorsa sui Dati di Bilancio dell'Azienda
+              </h3>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div class="bg-indigo-900/60 rounded-xl p-3 border border-indigo-800">
+              <div class="text-indigo-300">Incidenza sul Fatturato Annuo</div>
+              <div class="mt-1 font-mono font-bold text-sm">
+                Dipendente: <span id="impact-turnover-emp" class="text-white"></span> •
+                P.IVA: <span id="impact-turnover-piva" class="text-emerald-300"></span>
+              </div>
+            </div>
+            <div class="bg-indigo-900/60 rounded-xl p-3 border border-indigo-800">
+              <div class="text-indigo-300">Incidenza su Costi del Personale (Voce B9)</div>
+              <div class="mt-1 font-mono font-bold text-sm">
+                Dip.: <span id="impact-staff-emp" class="text-white"></span>
+              </div>
+              <div id="impact-staff-piva" class="text-[11px] text-indigo-300 mt-0.5"></div>
+            </div>
+            <div class="bg-indigo-900/60 rounded-xl p-3 border border-indigo-800">
+              <div class="text-indigo-300">Benchmark RAL vs Stipendio Medio Aziendale</div>
+              <div id="impact-avg-salary-comparison" class="mt-1 font-mono font-bold text-sm text-amber-300"></div>
+            </div>
+            <div class="bg-indigo-900/60 rounded-xl p-3 border border-indigo-800">
+              <div class="text-indigo-300">Assorbimento Margine Operativo Lordo (EBITDA)</div>
+              <div id="impact-ebitda-emp" class="mt-1 font-mono font-bold text-sm text-white"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. TABELLA ANALITICA VOCE PER VOCE -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden print-break-inside-avoid">
+          <div class="p-5 border-b border-slate-200 flex items-center justify-between">
+            <div>
+              <h3 class="text-base font-extrabold text-slate-900">
+                Prospetto Analitico Comparativo (Annuale)
+              </h3>
+              <p class="text-xs text-slate-500">
+                Dettaglio contabile delle voci di costo aziendale, scudo fiscale IRES/IRAP e netto percepito.
+              </p>
+            </div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  <th class="py-3 px-4">Voce di Costo / Imposta</th>
+                  <th class="py-3 px-4 text-right text-indigo-700">👔 Dipendente</th>
+                  <th class="py-3 px-4 text-right text-emerald-700">💼 Partita IVA</th>
+                </tr>
+              </thead>
+              <tbody id="comparison-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 6. NOTE GIUSLAVORISTICHE E COMPLIANCE -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 space-y-3 print-break-inside-avoid">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-extrabold uppercase tracking-wider text-slate-800">
+              ⚖ Valutazione Normativa & Monocommittenza (D.Lgs. 81/2015)
+            </h3>
+            <span id="compliance-risk-badge" class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
+              Rischio: BASSO
+            </span>
+          </div>
+          <ul id="compliance-notes-list" class="space-y-1.5"></ul>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- MODALE CONFIGURAZIONE API KEY OPENAPI.IT -->
+  <div id="modal-api-settings" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-lg w-full p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div>
+          <h3 class="text-base font-extrabold text-slate-900">Configurazione Credenziali Openapi.it</h3>
+          <p class="text-xs text-slate-500">
+            Le costanti permanenti sono nel file <code>config.ts</code> (e <code>config.js</code>). Puoi anche testare un token al volo qui.
+          </p>
+        </div>
+        <button id="btn-close-api-modal" type="button" class="text-slate-400 hover:text-slate-700 font-bold text-lg cursor-pointer">✕</button>
+      </div>
+
+      <form id="form-api-settings" class="space-y-4">
+        <div>
+          <label for="modal-input-api-key" class="block text-xs font-bold text-slate-700 mb-1">
+            Bearer Token Openapi.it (Company API)
+          </label>
+          <input
+            id="modal-input-api-key"
+            type="text"
+            placeholder="Inserisci il tuo Bearer Token..."
+            class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-xs font-mono text-slate-900 focus:border-indigo-600 focus:outline-none"
+          />
+          <p class="text-[11px] text-slate-500 mt-1">
+            Specifica OAS ufficiale: <code>https://console.openapi.com/oas/it/company.openapi.json</code>
+          </p>
+        </div>
+
+        <div>
+          <label for="modal-select-env" class="block text-xs font-bold text-slate-700 mb-1">
+            Ambiente Server Openapi.it
+          </label>
+          <select id="modal-select-env" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800">
+            <option value="SANDBOX">SANDBOX — https://test.company.openapi.com</option>
+            <option value="PRODUCTION">PRODUZIONE — https://company.openapi.com</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="modal-input-cors-proxy" class="block text-xs font-bold text-slate-700 mb-1">
+            CORS Proxy URL (Opzionale per esecuzione locale da browser)
+          </label>
+          <input
+            id="modal-input-cors-proxy"
+            type="text"
+            placeholder="Lascia vuoto per chiamata diretta"
+            class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-xs font-mono text-slate-900 focus:border-indigo-600 focus:outline-none"
+          />
+        </div>
+
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-[11px] text-slate-600 leading-relaxed">
+          🔒 <strong>Sicurezza Open Source:</strong> Il token inserito in questa finestra viene salvato esclusivamente nel <code>localStorage</code> del tuo browser e non viene mai inviato a terzi (solo verso <code>*.company.openapi.com</code>). Per configurazioni locali persistenti fuori da Git, copia <code>config.local.example.js</code> in <code>config.local.js</code>.
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
+          <button
+            id="btn-clear-api-token"
+            type="button"
+            class="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold transition cursor-pointer"
+          >
+            🗑 Cancella Token Salvato
+          </button>
+          <button type="submit" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs cursor-pointer">
+            Salva Impostazioni nel Browser
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- FOOTER OPEN SOURCE & DISCLAIMER FISCALE -->
+  <footer class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 mt-6 border-t border-slate-200 text-xs text-slate-500 space-y-2">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <div class="font-semibold text-slate-700">
+        <strong>Italian Work Cost Simulator</strong> (<code>italian-workcost-sim</code>) • Creato da <a href="https://github.com/devisgiordano" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">Devis Giordano</a> • Rilasciato sotto <a href="LICENSE" class="text-indigo-600 hover:underline">Licenza MIT</a>
+      </div>
+      <div class="flex items-center gap-3 no-print">
+        <a href="https://github.com/devisgiordano/italian-workcost-sim" target="_blank" rel="noopener noreferrer" class="text-slate-600 hover:text-indigo-600 hover:underline font-medium">
+          GitHub devisgiordano/italian-workcost-sim ↗
+        </a>
+        <span>•</span>
+        <a href="https://console.openapi.com/oas/it/company.openapi.json" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline font-medium">
+          Specifica OAS Openapi.it ↗
+        </a>
+        <span>•</span>
+        <a href="README.md" target="_blank" rel="noopener noreferrer" class="text-slate-600 hover:underline font-medium">
+          Documentazione (README)
+        </a>
+      </div>
+    </div>
+    <p class="text-[11px] text-slate-400 leading-relaxed">
+      <strong>Disclaimer Fiscale e Giuslavoristico:</strong> Le elaborazioni fornite da questo simulatore (aliquote INPS, premi INAIL, accantonamento TFR ex art. 2120 c.c., scaglioni IRPEF, taglio del cuneo fiscale, IRES/IRAP e regimi Partita IVA Forfettario/Ordinario) hanno carattere puramente indicativo e informativo. Non costituiscono parere professionale, consulenza fiscale o consulenza del lavoro. Per valutazioni vincolanti si rimanda al proprio Dottore Commercialista o Consulente del Lavoro in base al CCNL e alla situazione specifica dell'impresa.
+    </p>
+  </footer>
+
+  <!-- CARICAMENTO OVERRIDE LOCALE OPZIONALE (ignorato da Git), COSTANTI (config.js) E LOGICA APPLICATIVA (app.js) -->
+  <script src="config.local.js" onerror="/* file locale opzionale non presente */"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

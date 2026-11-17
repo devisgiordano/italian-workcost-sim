@@ -41,6 +41,7 @@ jobs:
         run: |
           mkdir -p dist
           cp index.html config.js i18n.js app.js config.local.example.js LICENSE README.md dist/
+          echo "// Production build: local overrides disabled (use UI modal / localStorage)" > dist/config.local.js
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5

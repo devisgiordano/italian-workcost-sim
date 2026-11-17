@@ -74,30 +74,11 @@ class OpenApiClientService {
         return key.length > 8 && key !== 'INSERISCI_QUI_LA_TUA_API_KEY_OPENAPI';
     }
     /**
-     * Se eseguito su webserver locale (es. PhpStorm preview o localhost),
-     * controlla se l'utente ha modificato direttamente config.ts senza ricompilare
+     * Eventuali override locali sono caricati tramite config.local.js (window.APP_LOCAL_CONFIG)
+     * o salvati in localStorage dal modale UI; nessuna chiamata fetch a file .ts necessaria.
      */
     async syncApiKeyFromTsSourceIfAvailable() {
-        if (window.location.protocol === 'file:') {
-            return;
-        }
-        try {
-            const response = await fetch('config.ts', { cache: 'no-store' });
-            if (!response.ok)
-                return;
-            const text = await response.text();
-            const apiKeyMatch = text.match(/API_KEY:\s*['"]([^'"]+)['"]/);
-            if (apiKeyMatch && apiKeyMatch[1] && apiKeyMatch[1] !== 'INSERISCI_QUI_LA_TUA_API_KEY_OPENAPI') {
-                this.config.API_KEY = apiKeyMatch[1].trim();
-            }
-            const envMatch = text.match(/ENVIRONMENT:\s*['"](SANDBOX|PRODUCTION)['"]/);
-            if (envMatch && (envMatch[1] === 'SANDBOX' || envMatch[1] === 'PRODUCTION')) {
-                this.config.ENVIRONMENT = envMatch[1];
-            }
-        }
-        catch {
-            // Ignora silenziosamente se config.ts non è servito via HTTP
-        }
+        return;
     }
     /**
      * Interroga l'endpoint Openapi.it (es. /IT-advanced/{vatCode} o /IT-full/{vatCode})

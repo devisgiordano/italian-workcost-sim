@@ -347,15 +347,15 @@ class CostSimulationEngine {
     static getCompanySizeFisRate(employeesCount) {
         const surcharges = APP_CONFIG.FISCAL.COMPANY_SIZE_SURCHARGES;
         if (employeesCount <= surcharges.MICRO_1_5.maxEmployees) {
-            return surcharges.MICRO_1_5;
+            return { fisRate: surcharges.MICRO_1_5.fisRate, label: I18N.t('fis.MICRO_1_5') };
         }
         if (employeesCount <= surcharges.SMALL_6_15.maxEmployees) {
-            return surcharges.SMALL_6_15;
+            return { fisRate: surcharges.SMALL_6_15.fisRate, label: I18N.t('fis.SMALL_6_15') };
         }
         if (employeesCount <= surcharges.MEDIUM_16_50.maxEmployees) {
-            return surcharges.MEDIUM_16_50;
+            return { fisRate: surcharges.MEDIUM_16_50.fisRate, label: I18N.t('fis.MEDIUM_16_50') };
         }
-        return surcharges.LARGE_OVER_50;
+        return { fisRate: surcharges.LARGE_OVER_50.fisRate, label: I18N.t('fis.LARGE_OVER_50') };
     }
     /**
      * Calcola il breakdown completo del Dipendente per una data RAL
@@ -781,22 +781,30 @@ class CostSimulationEngine {
         const thresholdLabel = formatEuro(piva.forfettarioThresholdUsed);
         if (piva.isAutoSwitchedToOrdinario) {
             riskScore = 'MEDIO';
-            notes.push(`Scalino Fiscale Forfettario → Ordinario attivato: l'imponibile fatturato (${formatEuro(piva.totalInvoiceTaxable)}, inclusa eventuale rivalsa) supera la soglia di ${thresholdLabel}. Il simulatore ha applicato automaticamente le imposte e gli oneri del Regime Ordinario (IRPEF 23%-43%, Addizionali e IVA 22%).`);
+            notes.push(I18N.t('compliance.note_auto_switch', {
+                taxable: formatEuro(piva.totalInvoiceTaxable),
+                threshold: thresholdLabel
+            }));
         }
         else if ((state.pivaRegime === 'FORFETTARIO_5' || state.pivaRegime === 'FORFETTARIO_15') &&
             piva.totalInvoiceTaxable > piva.forfettarioThresholdUsed) {
             riskScore = 'ALTO';
-            notes.push(`Attenzione: l'imponibile fatturato (${formatEuro(piva.totalInvoiceTaxable)}) supera la soglia di ${thresholdLabel} del Regime Forfettario (uscita dal regime dall'anno successivo, o immediata oltre 100.000 €).`);
+            notes.push(I18N.t('compliance.note_over_threshold', {
+                taxable: formatEuro(piva.totalInvoiceTaxable),
+                threshold: thresholdLabel
+            }));
         }
         if (state.pivaBilledDaysYear >= 210) {
             riskScore = riskScore === 'ALTO' ? 'ALTO' : 'MEDIO';
-            notes.push(`Impegno temporale elevato (${state.pivaBilledDaysYear} gg/anno): se il collaboratore opera con orari fissi ed esclusivamente nei locali aziendali, sussiste rischio di riqualificazione in rapporto subordinato (Art. 2 D.Lgs. 81/2015).`);
+            notes.push(I18N.t('compliance.note_days', {
+                days: state.pivaBilledDaysYear
+            }));
         }
         if (state.cassaId === 'CASSA_ORDINE_PROFESSIONALE') {
-            notes.push(`Iscrizione a Ordine/Albo Professionale: riduce significativamente il rischio di presunzione di subordinazione ex D.Lgs. 81/2015 per le prestazioni intellettuali.`);
+            notes.push(I18N.t('compliance.note_ordine'));
         }
         else {
-            notes.push(`Suggerimento contrattuale: per i collaboratori in Gestione Separata non iscritti ad Albo, prevedere autonomia organizzativa per obiettivi/deliverable e assenza di vincolo di orario.`);
+            notes.push(I18N.t('compliance.note_gs'));
         }
         return {
             employee,
@@ -818,7 +826,8 @@ class CostSimulationEngine {
 // UTILITY DI FORMATTAZIONE
 // ============================================================================
 function formatEuro(val, decimals = 0) {
-    return new Intl.NumberFormat('it-IT', {
+    const locale = typeof I18N !== 'undefined' ? I18N.getLocaleTag() : 'it-IT';
+    return new Intl.NumberFormat(locale, {
         style: 'currency',
         currency: 'EUR',
         minimumFractionDigits: decimals,
@@ -826,7 +835,8 @@ function formatEuro(val, decimals = 0) {
     }).format(Number.isFinite(val) ? val : 0);
 }
 function formatNumber(val, decimals = 1) {
-    return new Intl.NumberFormat('it-IT', {
+    const locale = typeof I18N !== 'undefined' ? I18N.getLocaleTag() : 'it-IT';
+    return new Intl.NumberFormat(locale, {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals
     }).format(Number.isFinite(val) ? val : 0);
@@ -875,6 +885,11 @@ class SimulatorAppController {
     }
     async init() {
         await this.apiService.syncApiKeyFromTsSourceIfAvailable();
+        const langSelect = document.getElementById('select-language');
+        if (langSelect) {
+            langSelect.value = I18N.getLang();
+        }
+        I18N.applyStaticTranslations();
         this.populateDynamicSelects();
         this.bindEvents();
         this.updateApiStatusBadge();
@@ -893,29 +908,29 @@ class SimulatorAppController {
         // Settori ATECO / CCNL
         const sectorSelect = document.getElementById('select-sector');
         if (sectorSelect) {
-            sectorSelect.innerHTML = APP_CONFIG.FISCAL.SECTORS.map((s) => `<option value="${s.id}">${s.label} (INPS base ${formatNumber(s.inpsEmployerBaseRate, 2)}% • INAIL ${formatNumber(s.inailDefaultRate, 2)}%)</option>`).join('');
+            sectorSelect.innerHTML = APP_CONFIG.FISCAL.SECTORS.map((s) => `<option value="${s.id}">${I18N.t(`sector.${s.id}`)} (INPS ${formatNumber(s.inpsEmployerBaseRate, 2)}% • INAIL ${formatNumber(s.inailDefaultRate, 2)}%)</option>`).join('');
         }
         // Qualifiche
         const qualSelect = document.getElementById('select-qualification');
         if (qualSelect) {
             qualSelect.innerHTML = Object.entries(APP_CONFIG.FISCAL.QUALIFICATIONS)
-                .map(([k, q]) => `<option value="${k}">${q.label}</option>`)
+                .map(([k]) => `<option value="${k}">${I18N.t(`qual.${k}`)}</option>`)
                 .join('');
         }
         // Agevolazioni assunzione
         const incSelect = document.getElementById('select-incentive');
         if (incSelect) {
-            incSelect.innerHTML = APP_CONFIG.FISCAL.HIRING_INCENTIVES.map((h) => `<option value="${h.id}">${h.label}</option>`).join('');
+            incSelect.innerHTML = APP_CONFIG.FISCAL.HIRING_INCENTIVES.map((h) => `<option value="${h.id}">${I18N.t(`inc.${h.id}`)}</option>`).join('');
         }
         // Casse Previdenziali P.IVA
         const cassaSelect = document.getElementById('select-cassa');
         if (cassaSelect) {
-            cassaSelect.innerHTML = APP_CONFIG.FISCAL.CASSE_PREVIDENZIALI.map((c) => `<option value="${c.id}">${c.label}</option>`).join('');
+            cassaSelect.innerHTML = APP_CONFIG.FISCAL.CASSE_PREVIDENZIALI.map((c) => `<option value="${c.id}">${I18N.t(`cassa.${c.id}`)}</option>`).join('');
         }
         // Coefficienti Forfettario
         const coeffSelect = document.getElementById('select-forfettario-coeff');
         if (coeffSelect) {
-            coeffSelect.innerHTML = APP_CONFIG.FISCAL.FORFETTARIO_COEFFICIENTS.map((c) => `<option value="${c.coeff}">${c.label}</option>`).join('');
+            coeffSelect.innerHTML = APP_CONFIG.FISCAL.FORFETTARIO_COEFFICIENTS.map((c) => `<option value="${c.coeff}">${I18N.t(`coeff.${c.code}`)}</option>`).join('');
         }
     }
     bindEvents() {
@@ -928,6 +943,25 @@ class SimulatorAppController {
         };
         syncHeaderHeight();
         window.addEventListener('resize', syncHeaderHeight);
+        // Selettore lingua nell'header
+        const langSelect = document.getElementById('select-language');
+        langSelect?.addEventListener('change', () => {
+            I18N.setLang(langSelect.value);
+            I18N.applyStaticTranslations();
+            this.populateDynamicSelects();
+            this.updateApiStatusBadge();
+            this.syncInputsFromState();
+            const body = document.getElementById('visura-collapsible-body');
+            if (body) {
+                this.setVisuraSectionExpanded(!body.classList.contains('hidden'));
+            }
+            if (this.activeVisura) {
+                this.calibrateParametersFromVisura(this.activeVisura);
+                this.renderVisuraCard();
+            }
+            this.recalculateAndRender();
+            syncHeaderHeight();
+        });
         // Toggle pannello collassabile Visura Openapi.it (Opzionale)
         document.getElementById('btn-toggle-visura-section')?.addEventListener('click', () => {
             this.toggleVisuraSection();
@@ -1211,8 +1245,8 @@ class SimulatorAppController {
             if (targetLabel) {
                 targetLabel.textContent =
                     this.state.mode === 'PARITA_NETTO'
-                        ? 'Target Netto Annuo Lavoratore desiderato (€)'
-                        : 'Budget / Costo Totale Annuo Aziendale massimo (€)';
+                        ? I18N.t('sim_mode.target_net_label')
+                        : I18N.t('sim_mode.target_cost_label');
             }
         }
         this.setElementValue('input-target-value', this.state.targetValue);
@@ -1288,13 +1322,13 @@ class SimulatorAppController {
             body.classList.remove('hidden');
             chevron?.classList.add('rotate-180');
             if (toggleLabel)
-                toggleLabel.textContent = 'Nascondi pannello';
+                toggleLabel.textContent = I18N.t('visura.toggle_collapse');
         }
         else {
             body.classList.add('hidden');
             chevron?.classList.remove('rotate-180');
             if (toggleLabel)
-                toggleLabel.textContent = 'Espandi (Opzionale)';
+                toggleLabel.textContent = I18N.t('visura.toggle_expand');
         }
     }
     /**
@@ -1307,7 +1341,7 @@ class SimulatorAppController {
         const endpoint = endpointSelect?.value || '/IT-advanced';
         if (statusEl) {
             statusEl.className = 'mt-2 text-xs font-medium text-indigo-600 flex items-center gap-1.5';
-            statusEl.innerHTML = `<span class="inline-block w-3.5 h-3.5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></span> Interrogazione visura Openapi.it (${endpoint}) in corso...`;
+            statusEl.innerHTML = `<span class="inline-block w-3.5 h-3.5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></span> ${I18N.t('visura.loading', { endpoint })}`;
         }
         if (btnSearch)
             btnSearch.disabled = true;
@@ -1318,7 +1352,10 @@ class SimulatorAppController {
             this.calibrateParametersFromVisura(result.visura);
             if (statusEl) {
                 statusEl.className = 'mt-2 text-xs font-medium text-emerald-700';
-                statusEl.textContent = `✓ Visura caricata con successo per ${result.visura.companyName} (P.IVA ${result.visura.vatCode}) — Parametri fiscali e INPS/INAIL/IRAP calibrati automaticamente.`;
+                statusEl.textContent = I18N.t('visura.loaded_ok', {
+                    name: result.visura.companyName,
+                    vat: result.visura.vatCode
+                });
             }
             this.syncInputsFromState();
             this.renderVisuraCard();
@@ -1347,13 +1384,21 @@ class SimulatorAppController {
         if (regObj?.code && APP_CONFIG.FISCAL.REGIONS[regObj.code]) {
             this.state.regionCode = regObj.code;
             const r = APP_CONFIG.FISCAL.REGIONS[regObj.code];
-            logs.push(`Regione Sede Legale: ${r.name} (IRAP ${formatNumber(r.irapRate, 2)}%, Add. Reg. IRPEF ${formatNumber(r.addRegIrpef, 2)}%)`);
+            logs.push(I18N.t('visura.log_region', {
+                name: r.name,
+                irap: formatNumber(r.irapRate, 2),
+                addReg: formatNumber(r.addRegIrpef, 2)
+            }));
         }
         else if (regObj?.description) {
             const found = Object.values(APP_CONFIG.FISCAL.REGIONS).find((r) => r.name.toLowerCase() === regObj.description.toLowerCase());
             if (found) {
                 this.state.regionCode = found.code;
-                logs.push(`Regione Sede Legale: ${found.name} (IRAP ${formatNumber(found.irapRate, 2)}%)`);
+                logs.push(I18N.t('visura.log_region', {
+                    name: found.name,
+                    irap: formatNumber(found.irapRate, 2),
+                    addReg: formatNumber(found.addRegIrpef, 2)
+                }));
             }
         }
         // 2. Calibrazione Settore CCNL, INPS, INAIL e Detraibilità IVA tramite Codice ATECO
@@ -1369,7 +1414,13 @@ class SimulatorAppController {
                 this.state.sectorId = matchedSector.id;
                 this.state.vatDeductibilityPct = matchedSector.defaultVatDeductibility;
                 this.state.forfettarioCoeff = matchedSector.defaultForfettarioCoeff;
-                logs.push(`Codice ATECO ${atecoRaw} → Settore "${matchedSector.label}" (INPS base ${formatNumber(matchedSector.inpsEmployerBaseRate, 2)}%, INAIL ${formatNumber(matchedSector.inailDefaultRate, 2)}%, Detraibilità IVA ${matchedSector.defaultVatDeductibility}%)`);
+                logs.push(I18N.t('visura.log_sector', {
+                    ateco: atecoRaw,
+                    sector: I18N.t(`sector.${matchedSector.id}`),
+                    inps: formatNumber(matchedSector.inpsEmployerBaseRate, 2),
+                    inail: formatNumber(matchedSector.inailDefaultRate, 2),
+                    vat: matchedSector.defaultVatDeductibility
+                }));
             }
         }
         // 3. Calibrazione Numero Dipendenti (Impatti su FIS / CIGS e TFR Tesoreria INPS)
@@ -1379,7 +1430,10 @@ class SimulatorAppController {
         if (typeof empCount === 'number' && empCount > 0) {
             this.state.companyEmployeesCount = empCount;
             const fisInfo = CostSimulationEngine.getCompanySizeFisRate(empCount);
-            logs.push(`Organico da Visura: ${empCount} dipendenti → ${fisInfo.label}`);
+            logs.push(I18N.t('visura.log_employees', {
+                count: empCount,
+                fisLabel: fisInfo.label
+            }));
         }
         this.calibrationLog = logs;
     }
@@ -1414,13 +1468,13 @@ class SimulatorAppController {
                     : 'Sandbox OAS Openapi.it';
         }
         this.setText('visura-address', `${office?.streetName || ''} — ${office?.zipCode || ''} ${office?.town || ''} (${provinceStr}) • ${office?.region?.description || ''}`);
-        this.setText('visura-ateco', ateco ? `${ateco.code} — ${ateco.description}` : 'Non specificato');
+        this.setText('visura-ateco', ateco ? `${ateco.code} — ${ateco.description}` : I18N.t('visura.not_specified'));
         this.setText('visura-pec-sdi', `PEC: ${v.pec || 'N/D'} • SDI: ${v.sdiCode || 'N/D'}`);
         this.setText('visura-turnover', bs?.turnover ? `${formatEuro(bs.turnover)} (${bs.year})` : 'N/D');
         this.setText('visura-employees', bs?.employees !== null && bs?.employees !== undefined
-            ? `${bs.employees} unità`
+            ? I18N.t('visura.units', { count: bs.employees })
             : v.employees?.employee
-                ? `${v.employees.employee} unità`
+                ? I18N.t('visura.units', { count: v.employees.employee })
                 : 'N/D');
         this.setText('visura-staff-cost', bs?.totalStaffCost ? formatEuro(bs.totalStaffCost) : 'N/D');
         this.setText('visura-avg-salary', bs?.avgGrossSalary ? formatEuro(bs.avgGrossSalary) : 'N/D');
@@ -1428,7 +1482,9 @@ class SimulatorAppController {
         if (btnUseSalary) {
             if (bs?.avgGrossSalary && bs.avgGrossSalary > 0) {
                 btnUseSalary.classList.remove('hidden');
-                btnUseSalary.textContent = `Applica Stipendio Medio da Bilancio (${formatEuro(bs.avgGrossSalary)})`;
+                btnUseSalary.textContent = I18N.t('visura.btn_apply_salary', {
+                    amount: formatEuro(bs.avgGrossSalary)
+                });
             }
             else {
                 btnUseSalary.classList.add('hidden');
@@ -1463,7 +1519,10 @@ class SimulatorAppController {
             if (piva.isAutoSwitchedToOrdinario) {
                 switchBanner.classList.remove('hidden');
                 if (switchBannerText) {
-                    switchBannerText.textContent = `Imponibile fattura (${formatEuro(piva.totalInvoiceTaxable)}, inclusa rivalsa) oltre la soglia Forfettario di ${formatEuro(piva.forfettarioThresholdUsed)}: applicate automaticamente imposte e oneri del Regime Ordinario (IRPEF 23%-43%, Addizionali e IVA 22%).`;
+                    switchBannerText.textContent = I18N.t('card_c.banner_switch_text', {
+                        taxable: formatEuro(piva.totalInvoiceTaxable),
+                        threshold: formatEuro(piva.forfettarioThresholdUsed)
+                    });
                 }
             }
             else {
@@ -1472,28 +1531,36 @@ class SimulatorAppController {
         }
         if (pivaRegimeBadge) {
             if (piva.isAutoSwitchedToOrdinario) {
-                pivaRegimeBadge.textContent = `Ordinario (Soglia >${formatNumber(piva.forfettarioThresholdUsed / 1000, 0)}k€)`;
+                pivaRegimeBadge.textContent = I18N.t('card_c.badge_ord_over', {
+                    threshold: formatNumber(piva.forfettarioThresholdUsed / 1000, 0)
+                });
                 pivaRegimeBadge.className = 'px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300';
             }
             else if (piva.effectiveRegime === 'FORFETTARIO_5') {
-                pivaRegimeBadge.textContent = 'Forfettario 5%';
+                pivaRegimeBadge.textContent = I18N.t('card_c.badge_forf5');
                 pivaRegimeBadge.className = 'px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700';
             }
             else if (piva.effectiveRegime === 'FORFETTARIO_15') {
-                pivaRegimeBadge.textContent = 'Forfettario 15%';
+                pivaRegimeBadge.textContent = I18N.t('card_c.badge_forf15');
                 pivaRegimeBadge.className = 'px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700';
             }
             else {
-                pivaRegimeBadge.textContent = 'Regime Ordinario IRPEF';
+                pivaRegimeBadge.textContent = I18N.t('card_c.badge_ord');
                 pivaRegimeBadge.className = 'px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-700';
             }
         }
         // 1. KPI Executive Cards
         this.setText('kpi-emp-company-cost', formatEuro(emp.totalEmployerGrossCost));
-        this.setText('kpi-emp-company-sub', `${formatEuro(emp.totalEmployerMonthlyGrossCost)}/mese • Moltiplicatore ${formatNumber(emp.effectiveCostMultiplier, 2)}x RAL`);
+        this.setText('kpi-emp-company-sub', I18N.t('kpi.emp_sub', {
+            monthly: formatEuro(emp.totalEmployerMonthlyGrossCost),
+            mult: formatNumber(emp.effectiveCostMultiplier, 2)
+        }));
         this.setText('kpi-emp-after-tax', formatEuro(emp.totalEmployerNetCostAfterTax));
         this.setText('kpi-piva-company-cost', formatEuro(piva.totalCompanyGrossCost));
-        this.setText('kpi-piva-company-sub', `${formatEuro(piva.totalCompanyMonthlyGrossCost)}/mese • Tariffa ${formatEuro(piva.impliedDailyRate)}/gg`);
+        this.setText('kpi-piva-company-sub', I18N.t('kpi.piva_sub', {
+            monthly: formatEuro(piva.totalCompanyMonthlyGrossCost),
+            daily: formatEuro(piva.impliedDailyRate)
+        }));
         this.setText('kpi-piva-after-tax', formatEuro(piva.totalCompanyNetCostAfterTax));
         // Delta Costo Aziendale
         const diffCost = this.state.applyIresIrapTaxShield
@@ -1502,27 +1569,33 @@ class SimulatorAppController {
         const absDiffCost = Math.abs(diffCost);
         const diffCard = document.getElementById('card-kpi-saving');
         if (Math.abs(diffCost) < 50) {
-            this.setText('kpi-cost-diff-title', 'Pareggio Costo Aziendale');
+            this.setText('kpi-cost-diff-title', I18N.t('kpi.diff_equal_title'));
             this.setText('kpi-cost-diff-val', formatEuro(0));
-            this.setText('kpi-cost-diff-sub', 'I due inquadramenti hanno lo stesso impatto economico');
+            this.setText('kpi-cost-diff-sub', I18N.t('kpi.diff_equal_sub'));
             if (diffCard)
                 diffCard.className = 'rounded-2xl p-5 bg-slate-800 text-white shadow-sm';
         }
         else if (diffCost < 0) {
             // P.IVA costa meno all'azienda
-            this.setText('kpi-cost-diff-title', 'Risparmio Azienda con P.IVA');
-            this.setText('kpi-cost-diff-val', `- ${formatEuro(absDiffCost)}/anno`);
+            this.setText('kpi-cost-diff-title', I18N.t('kpi.diff_piva_saves_title'));
+            this.setText('kpi-cost-diff-val', `- ${I18N.t('kpi.per_year', { amount: formatEuro(absDiffCost) })}`);
             const pct = emp.totalEmployerGrossCost > 0 ? (absDiffCost / emp.totalEmployerGrossCost) * 100 : 0;
-            this.setText('kpi-cost-diff-sub', `Risparmio di ${formatEuro(absDiffCost / 12)}/mese (-${formatNumber(pct, 1)}%) rispetto al Dipendente`);
+            this.setText('kpi-cost-diff-sub', I18N.t('kpi.diff_piva_saves_sub', {
+                monthly: formatEuro(absDiffCost / 12),
+                pct: formatNumber(pct, 1)
+            }));
             if (diffCard)
                 diffCard.className = 'rounded-2xl p-5 bg-emerald-700 text-white shadow-sm';
         }
         else {
             // Dipendente costa meno all'azienda
-            this.setText('kpi-cost-diff-title', 'Risparmio Azienda con Dipendente');
-            this.setText('kpi-cost-diff-val', `- ${formatEuro(absDiffCost)}/anno`);
+            this.setText('kpi-cost-diff-title', I18N.t('kpi.diff_emp_saves_title'));
+            this.setText('kpi-cost-diff-val', `- ${I18N.t('kpi.per_year', { amount: formatEuro(absDiffCost) })}`);
             const pct = piva.totalCompanyGrossCost > 0 ? (absDiffCost / piva.totalCompanyGrossCost) * 100 : 0;
-            this.setText('kpi-cost-diff-sub', `Il Dipendente costa ${formatEuro(absDiffCost / 12)}/mese in meno (-${formatNumber(pct, 1)}%)`);
+            this.setText('kpi-cost-diff-sub', I18N.t('kpi.diff_emp_saves_sub', {
+                monthly: formatEuro(absDiffCost / 12),
+                pct: formatNumber(pct, 1)
+            }));
             if (diffCard)
                 diffCard.className = 'rounded-2xl p-5 bg-indigo-700 text-white shadow-sm';
         }
@@ -1532,21 +1605,33 @@ class SimulatorAppController {
             : emp.netAnnualWithBenefits;
         const netDiff = piva.netAnnualCash - empTotalNet;
         this.setText('kpi-emp-worker-net', formatEuro(empTotalNet));
-        this.setText('kpi-emp-worker-net-sub', `Netto in busta: ${formatEuro(emp.netMonthlyCash)}/mese (${emp.mensilita} mens.) + Benefit/TFR`);
+        this.setText('kpi-emp-worker-net-sub', I18N.t('wedge.emp_net_sub', {
+            monthly: formatEuro(emp.netMonthlyCash),
+            mens: emp.mensilita
+        }));
         this.setText('kpi-piva-worker-net', formatEuro(piva.netAnnualCash));
-        this.setText('kpi-piva-worker-net-sub', `Netto disponibile: ${formatEuro(piva.netMonthlyCash)}/mese (tasse/INPS ${formatNumber(piva.effectiveTaxAndContribRatePct, 1)}%)`);
+        this.setText('kpi-piva-worker-net-sub', I18N.t('wedge.piva_net_sub', {
+            monthly: formatEuro(piva.netMonthlyCash),
+            rate: formatNumber(piva.effectiveTaxAndContribRatePct, 1)
+        }));
         const netDiffEl = document.getElementById('kpi-worker-net-diff');
         if (netDiffEl) {
             if (Math.abs(netDiff) < 50) {
-                netDiffEl.textContent = 'Stesso Netto per il lavoratore';
+                netDiffEl.textContent = I18N.t('wedge.diff_equal');
                 netDiffEl.className = 'text-xs font-semibold text-slate-600';
             }
             else if (netDiff > 0) {
-                netDiffEl.textContent = `+${formatEuro(netDiff)}/anno (+${formatEuro(netDiff / 12)}/mese) a favore della P.IVA`;
+                netDiffEl.textContent = I18N.t('wedge.diff_piva', {
+                    annual: formatEuro(netDiff),
+                    monthly: formatEuro(netDiff / 12)
+                });
                 netDiffEl.className = 'text-xs font-semibold text-emerald-700';
             }
             else {
-                netDiffEl.textContent = `+${formatEuro(Math.abs(netDiff))}/anno (+${formatEuro(Math.abs(netDiff) / 12)}/mese) a favore del Dipendente`;
+                netDiffEl.textContent = I18N.t('wedge.diff_emp', {
+                    annual: formatEuro(Math.abs(netDiff)),
+                    monthly: formatEuro(Math.abs(netDiff) / 12)
+                });
                 netDiffEl.className = 'text-xs font-semibold text-indigo-700';
             }
         }
@@ -1554,9 +1639,9 @@ class SimulatorAppController {
         this.renderVisualComparisonBars(emp, piva);
         // 3. Break-Even & Tariffa Giornaliera Equivalente
         this.setText('be-cost-annual', formatEuro(result.breakEvenPivaBaseForSameCompanyCost));
-        this.setText('be-cost-daily', `${formatEuro(result.breakEvenDailyRateForSameCompanyCost)} / giorno`);
+        this.setText('be-cost-daily', I18N.t('be.per_day', { amount: formatEuro(result.breakEvenDailyRateForSameCompanyCost) }));
         this.setText('be-net-annual', formatEuro(result.breakEvenPivaBaseForSameWorkerNet));
-        this.setText('be-net-daily', `${formatEuro(result.breakEvenDailyRateForSameWorkerNet)} / giorno`);
+        this.setText('be-net-daily', I18N.t('be.per_day', { amount: formatEuro(result.breakEvenDailyRateForSameWorkerNet) }));
         // 4. Tabella Comparativa Analitica Voce per Voce
         this.renderDetailedComparisonTable(emp, piva);
         // 5. Impatto sul Bilancio Aziendale (se c'è una Visura attiva o dati di bilancio)
@@ -1579,7 +1664,10 @@ class SimulatorAppController {
         this.setBarWidth('bar-emp-worker-tax', empTaxPct);
         this.setBarWidth('bar-emp-company-tax', empCompPct);
         this.setText('legend-emp-net', `${formatEuro(empNetBenefit)} (${formatNumber(100 - emp.taxWedgePct, 1)}%)`);
-        this.setText('legend-emp-wedge', `${formatEuro(emp.taxWedgeTotalEur)} (Cuneo ${formatNumber(emp.taxWedgePct, 1)}%)`);
+        this.setText('legend-emp-wedge', I18N.t('wedge.wedge_fmt', {
+            amount: formatEuro(emp.taxWedgeTotalEur),
+            pct: formatNumber(emp.taxWedgePct, 1)
+        }));
         // Partita IVA: Netto Professionista vs Imposte+Contributi P.IVA vs Costi/IVA indetraibile/Spese
         const pivaNet = piva.netAnnualCash;
         const pivaTaxes = piva.cassaContributions + piva.incomeTaxAmount;
@@ -1591,7 +1679,10 @@ class SimulatorAppController {
         this.setBarWidth('bar-piva-tax', pivaTaxPct);
         this.setBarWidth('bar-piva-other', pivaOtherPct);
         this.setText('legend-piva-net', `${formatEuro(pivaNet)} (${formatNumber(100 - piva.taxWedgePct, 1)}%)`);
-        this.setText('legend-piva-wedge', `${formatEuro(piva.taxWedgeTotalEur)} (Cuneo ${formatNumber(piva.taxWedgePct, 1)}%)`);
+        this.setText('legend-piva-wedge', I18N.t('wedge.wedge_fmt', {
+            amount: formatEuro(piva.taxWedgeTotalEur),
+            pct: formatNumber(piva.taxWedgePct, 1)
+        }));
     }
     setBarWidth(id, pct) {
         const el = document.getElementById(id);
@@ -1605,95 +1696,120 @@ class SimulatorAppController {
             return;
         const rows = [
             {
-                category: 'Retribuzione / Compenso Base',
-                label: 'RAL Dipendente vs Compenso Imponibile Annuo P.IVA',
+                category: I18N.t('table.r1_cat'),
+                label: I18N.t('table.r1_label'),
                 empVal: formatEuro(emp.ral),
                 pivaVal: formatEuro(piva.baseCompensation),
-                note: `Dipendente su ${emp.mensilita} mensilità • P.IVA su ${this.state.pivaBilledDaysYear} gg`
+                note: I18N.t('table.r1_note', {
+                    mens: emp.mensilita,
+                    days: this.state.pivaBilledDaysYear
+                })
             },
             {
-                category: 'Oneri Previdenziali Azienda',
-                label: 'Contributi INPS Datore / Rivalsa o Cassa in Fattura',
+                category: I18N.t('table.r2_cat'),
+                label: I18N.t('table.r2_label'),
                 empVal: `${formatEuro(emp.inpsEmployerNet)} (${formatNumber(emp.inpsEmployerRatePct, 2)}%)`,
                 pivaVal: `${formatEuro(piva.rivalsaOrIntegrativeAmount)} (${formatNumber(piva.rivalsaOrIntegrativeRatePct, 1)}%)`,
                 note: emp.inpsEmployerDiscount > 0
-                    ? `Include sgravio assunzione di -${formatEuro(emp.inpsEmployerDiscount)}`
-                    : 'Aliquota calibrata su ATECO e organico aziendale'
+                    ? I18N.t('table.r2_note_disc', { disc: formatEuro(emp.inpsEmployerDiscount) })
+                    : I18N.t('table.r2_note_std')
             },
             {
-                category: 'Assicurazione & Fondi',
-                label: 'Premio INAIL + Fondi Sanitari/Bilaterali CCNL + Bolli',
+                category: I18N.t('table.r3_cat'),
+                label: I18N.t('table.r3_label'),
                 empVal: formatEuro(emp.inailEmployer + emp.bilateralAndHealthFunds),
                 pivaVal: formatEuro(piva.stampDutyAnnual),
-                note: `INAIL ${formatNumber(emp.inailRatePct, 2)}% (${formatEuro(emp.inailEmployer)}) + Fondi CCNL (${formatEuro(emp.bilateralAndHealthFunds)})`
+                note: I18N.t('table.r3_note', {
+                    inailPct: formatNumber(emp.inailRatePct, 2),
+                    inailAmt: formatEuro(emp.inailEmployer),
+                    fundsAmt: formatEuro(emp.bilateralAndHealthFunds)
+                })
             },
             {
-                category: 'Trattamento Fine Rapporto',
-                label: 'Accantonamento TFR (Art. 2120 c.c.) + Fondo Garanzia',
+                category: I18N.t('table.r4_cat'),
+                label: I18N.t('table.r4_label'),
                 empVal: formatEuro(emp.tfrAccrual + emp.tfrGuaranteeFund),
                 pivaVal: formatEuro(0),
-                note: 'Liquidazione differita per il dipendente (~6,91% RAL); assente per P.IVA'
+                note: I18N.t('table.r4_note')
             },
             {
-                category: 'Benefit, Welfare & Gestione',
-                label: 'Buoni Pasto + Welfare Aziendale + Gestione LUL / IVA Indetr.',
+                category: I18N.t('table.r5_cat'),
+                label: I18N.t('table.r5_label'),
                 empVal: formatEuro(emp.mealVouchersAnnual + emp.welfareAnnual + emp.payrollAdminAnnual),
                 pivaVal: formatEuro(piva.nonDeductibleVatCost),
                 note: piva.nonDeductibleVatCost > 0
-                    ? `Include ${formatEuro(piva.nonDeductibleVatCost)} di IVA indetraibile per l'azienda`
-                    : `Buoni pasto ${formatEuro(emp.mealVouchersAnnual)} + Welfare ${formatEuro(emp.welfareAnnual)} + LUL ${formatEuro(emp.payrollAdminAnnual)}`
+                    ? I18N.t('table.r5_note_vat', { vat: formatEuro(piva.nonDeductibleVatCost) })
+                    : I18N.t('table.r5_note_std', {
+                        meal: formatEuro(emp.mealVouchersAnnual),
+                        welfare: formatEuro(emp.welfareAnnual),
+                        lul: formatEuro(emp.payrollAdminAnnual)
+                    })
             },
             {
-                category: 'COSTO TOTALE LORDO AZIENDA',
-                label: 'Esborso Economico Totale Annuo per l\'Azienda',
+                category: I18N.t('table.r6_cat'),
+                label: I18N.t('table.r6_label'),
                 empVal: formatEuro(emp.totalEmployerGrossCost),
                 pivaVal: formatEuro(piva.totalCompanyGrossCost),
                 highlight: true,
-                note: `Mensile: ${formatEuro(emp.totalEmployerMonthlyGrossCost)} (Dip.) vs ${formatEuro(piva.totalCompanyMonthlyGrossCost)} (P.IVA)`
+                note: I18N.t('table.r6_note', {
+                    empM: formatEuro(emp.totalEmployerMonthlyGrossCost),
+                    pivaM: formatEuro(piva.totalCompanyMonthlyGrossCost)
+                })
             },
             {
-                category: 'Risparmio Fiscale IRES + IRAP',
-                label: 'Deduzione IRES (24%) + Deduzione IRAP Regionale',
+                category: I18N.t('table.r7_cat'),
+                label: I18N.t('table.r7_label'),
                 empVal: `- ${formatEuro(emp.totalTaxShieldSaving)}`,
                 pivaVal: `- ${formatEuro(piva.totalTaxShieldSaving)}`,
-                note: `IRES: -${formatEuro(emp.iresDeductionSaving)} vs -${formatEuro(piva.iresDeductionSaving)} • IRAP: -${formatEuro(emp.irapDeductionSaving)} vs -${formatEuro(piva.irapDeductionSaving)}`
+                note: I18N.t('table.r7_note', {
+                    empIres: formatEuro(emp.iresDeductionSaving),
+                    pivaIres: formatEuro(piva.iresDeductionSaving),
+                    empIrap: formatEuro(emp.irapDeductionSaving),
+                    pivaIrap: formatEuro(piva.irapDeductionSaving)
+                })
             },
             {
-                category: 'COSTO NETTO AZIENDA (POST-TASSE)',
-                label: 'Costo Effettivo Aziendale al netto di IRES e IRAP',
+                category: I18N.t('table.r8_cat'),
+                label: I18N.t('table.r8_label'),
                 empVal: formatEuro(emp.totalEmployerNetCostAfterTax),
                 pivaVal: formatEuro(piva.totalCompanyNetCostAfterTax),
                 highlight: true
             },
             {
-                category: 'Lato Lavoratore: Previdenza',
-                label: 'Contributi Previdenziali a carico del Lavoratore',
+                category: I18N.t('table.r9_cat'),
+                label: I18N.t('table.r9_label'),
                 empVal: `- ${formatEuro(emp.inpsEmployee)} (${formatNumber(emp.inpsEmployeeRatePct, 2)}%)`,
                 pivaVal: `- ${formatEuro(piva.cassaContributions)}`,
-                note: 'Trattenuti in busta paga per il dipendente; versati in F24/Cassa dal professionista'
+                note: I18N.t('table.r9_note')
             },
             {
-                category: 'Lato Lavoratore: Imposte',
-                label: 'IRPEF Netta + Addizionali vs Imposta Sostitutiva / IRPEF P.IVA',
+                category: I18N.t('table.r10_cat'),
+                label: I18N.t('table.r10_label'),
                 empVal: `- ${formatEuro(Math.max(0, emp.ral - emp.inpsEmployee - emp.netAnnualCash))}`,
                 pivaVal: `- ${formatEuro(piva.incomeTaxAmount)}`,
-                note: `Include detrazioni lavoro (${formatEuro(emp.detrazioneLavoroDipendente)}) e taglio cuneo (${formatEuro(emp.cuneoFiscaleBenefit)})`
+                note: I18N.t('table.r10_note', {
+                    detr: formatEuro(emp.detrazioneLavoroDipendente),
+                    cuneo: formatEuro(emp.cuneoFiscaleBenefit)
+                })
             },
             {
-                category: 'NETTO IN TASCA LAVORATORE',
-                label: 'Liquidità Netta Annua (esclusi TFR e Benefit)',
+                category: I18N.t('table.r11_cat'),
+                label: I18N.t('table.r11_label'),
                 empVal: formatEuro(emp.netAnnualCash),
                 pivaVal: formatEuro(piva.netAnnualCash),
                 highlight: true,
-                note: `Netto mensile (su 12 mesi): ${formatEuro(emp.netAnnualCash / 12)} (Dip.) vs ${formatEuro(piva.netMonthlyCash)} (P.IVA)`
+                note: I18N.t('table.r11_note', {
+                    empM: formatEuro(emp.netAnnualCash / 12),
+                    pivaM: formatEuro(piva.netMonthlyCash)
+                })
             },
             {
-                category: 'VALORE TOTALE PERCEPITO',
-                label: 'Netto + Buoni Pasto + Welfare + TFR Accantonato',
+                category: I18N.t('table.r12_cat'),
+                label: I18N.t('table.r12_label'),
                 empVal: formatEuro(emp.netAnnualTotalWithTfr),
                 pivaVal: formatEuro(piva.netAnnualCash),
                 highlight: true,
-                note: 'Confronto patrimoniale complessivo per il lavoratore'
+                note: I18N.t('table.r12_note')
             }
         ];
         tbody.innerHTML = rows
@@ -1726,27 +1842,38 @@ class SimulatorAppController {
         this.setText('impact-turnover-emp', turnover > 0 ? `${formatNumber((emp.totalEmployerGrossCost / turnover) * 100, 2)}%` : 'N/D');
         this.setText('impact-turnover-piva', turnover > 0 ? `${formatNumber((piva.totalCompanyGrossCost / turnover) * 100, 2)}%` : 'N/D');
         this.setText('impact-staff-emp', staffCost > 0 ? `+${formatNumber((emp.totalEmployerGrossCost / staffCost) * 100, 1)}%` : 'N/D');
-        this.setText('impact-staff-piva', staffCost > 0 ? `0% su B9 (va in B7 Servizi: ${formatNumber((piva.totalCompanyGrossCost / staffCost) * 100, 1)}% del B9)` : 'N/D');
+        this.setText('impact-staff-piva', staffCost > 0
+            ? I18N.t('balance.staff_piva_note', {
+                pct: formatNumber((piva.totalCompanyGrossCost / staffCost) * 100, 1)
+            })
+            : 'N/D');
         if (avgSal > 0) {
             const diffVsAvg = ((emp.ral - avgSal) / avgSal) * 100;
             const sign = diffVsAvg >= 0 ? '+' : '';
-            this.setText('impact-avg-salary-comparison', `${sign}${formatNumber(diffVsAvg, 1)}% rispetto alla media aziendale (${formatEuro(avgSal)})`);
+            this.setText('impact-avg-salary-comparison', I18N.t('balance.avg_sal_comp', {
+                diff: `${sign}${formatNumber(diffVsAvg, 1)}`,
+                avg: formatEuro(avgSal)
+            }));
         }
         else {
-            this.setText('impact-avg-salary-comparison', 'Dato medio non presente in visura');
+            this.setText('impact-avg-salary-comparison', I18N.t('balance.avg_sal_na'));
         }
         if (ebitda && ebitda > 0) {
-            this.setText('impact-ebitda-emp', `${formatNumber((emp.totalEmployerGrossCost / ebitda) * 100, 1)}% dell'EBITDA (${formatEuro(ebitda)})`);
+            this.setText('impact-ebitda-emp', I18N.t('balance.ebitda_comp', {
+                pct: formatNumber((emp.totalEmployerGrossCost / ebitda) * 100, 1),
+                ebitda: formatEuro(ebitda)
+            }));
         }
         else {
-            this.setText('impact-ebitda-emp', 'Richiede endpoint /IT-full');
+            this.setText('impact-ebitda-emp', I18N.t('balance.ebitda_req'));
         }
     }
     renderComplianceNotes(result) {
         const badge = document.getElementById('compliance-risk-badge');
         const list = document.getElementById('compliance-notes-list');
         if (badge) {
-            badge.textContent = `Rischio Giuslavoristico: ${result.monocommittenzaRiskScore}`;
+            const localizedRisk = I18N.t(`compliance.risk_${result.monocommittenzaRiskScore}`);
+            badge.textContent = I18N.t('compliance.badge', { risk: localizedRisk });
             if (result.monocommittenzaRiskScore === 'ALTO') {
                 badge.className = 'px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800';
             }
@@ -1770,13 +1897,13 @@ class SimulatorAppController {
         const settings = this.apiService.getSettings();
         if (this.apiService.hasValidCustomToken()) {
             badge.className =
-                'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300';
-            badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-600"></span> Token Openapi.it Attivo (${settings.ENVIRONMENT})`;
+                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300 whitespace-nowrap';
+            badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-600"></span> ${I18N.t('header.status_token_active', { env: settings.ENVIRONMENT })}`;
         }
         else {
             badge.className =
-                'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300';
-            badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500"></span> Modalità Sandbox / Configura API Key`;
+                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300 whitespace-nowrap';
+            badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500"></span> ${I18N.t('header.status_sandbox')}`;
         }
     }
     openApiSettingsModal() {

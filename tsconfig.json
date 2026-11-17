@@ -13,6 +13,7 @@
   },
   "files": [
     "config.ts",
+    "i18n.ts",
     "app.ts"
   ]
 }

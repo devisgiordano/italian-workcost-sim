@@ -1240,6 +1240,16 @@ class SimulatorAppController {
   }
 
   private bindEvents(): void {
+    // Aggiornamento dinamico offset top per sticky section modalità
+    const syncHeaderHeight = () => {
+      const header = document.querySelector('header');
+      if (header) {
+        document.documentElement.style.setProperty('--header-h', `${header.offsetHeight}px`);
+      }
+    };
+    syncHeaderHeight();
+    window.addEventListener('resize', syncHeaderHeight);
+
     // Toggle pannello collassabile Visura Openapi.it (Opzionale)
     document.getElementById('btn-toggle-visura-section')?.addEventListener('click', () => {
       this.toggleVisuraSection();
@@ -1526,10 +1536,10 @@ class SimulatorAppController {
       const m = btn.getAttribute('data-sim-mode');
       if (m === this.state.mode) {
         btn.className =
-          'sim-mode-btn px-4 py-2.5 rounded-xl text-sm font-semibold transition-all bg-indigo-600 text-white shadow-sm';
+          'sim-mode-btn w-full px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-center transition-all bg-indigo-600 text-white shadow-sm cursor-pointer';
       } else {
         btn.className =
-          'sim-mode-btn px-4 py-2.5 rounded-xl text-sm font-semibold transition-all bg-slate-100 text-slate-700 hover:bg-slate-200';
+          'sim-mode-btn w-full px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-center transition-all bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer';
       }
     });
 

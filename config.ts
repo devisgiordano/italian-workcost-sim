@@ -181,6 +181,8 @@ interface AppConstantsConfig {
     TFR_GUARANTEE_FUND_EMPLOYER: number; // 0.20% contributo Fondo di Garanzia
     STAMP_DUTY_INVOICE: number; // 2.00 € marca da bollo per fattura > 77,47€
     STANDARD_VAT_RATE: number; // 22%
+    FORFETTARIO_LIMIT_CURRENT: number; // 85.000 € soglia vigente L. 197/2022
+    FORFETTARIO_LIMIT_PROPOSED: number; // 100.000 € ipotesi innalzamento soglia
     IRPEF_BRACKETS: IrpefBracket[];
     COMPANY_SIZE_SURCHARGES: {
       MICRO_1_5: { maxEmployees: number; fisRate: number; label: string };
@@ -240,6 +242,8 @@ const APP_CONFIG: AppConstantsConfig = {
     TFR_GUARANTEE_FUND_EMPLOYER: 0.20,  // Contributo Fondo di Garanzia TFR INPS (0,20%)
     STAMP_DUTY_INVOICE: 2.0,            // Imposta di bollo su fatture esenti/forfettarie > 77,47€
     STANDARD_VAT_RATE: 22.0,            // Aliquota IVA ordinaria (22%)
+    FORFETTARIO_LIMIT_CURRENT: 85000,   // Limite ricavi/compensi Regime Forfettario vigente (85.000 €)
+    FORFETTARIO_LIMIT_PROPOSED: 100000, // Ipotesi innalzamento soglia Forfettario (100.000 €)
 
     // Scaglioni IRPEF 2025/2026 (3 aliquote: 23%, 35%, 43%)
     IRPEF_BRACKETS: [

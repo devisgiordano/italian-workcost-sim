@@ -40,6 +40,8 @@ interface SimulationInputState {
   pivaGrossAnnual: number;
   syncPivaToRal: boolean;                // Se true in PARITA_LORDO, usa compenso P.IVA = RAL (o moltiplicatore)
   pivaRegime: PivaRegimeType;
+  forfettarioThreshold: number;          // 85000 (vigente) oppure 100000 (ipotesi riforma)
+  autoSwitchToOrdinarioOverThreshold: boolean; // Se true, oltre soglia calcola automaticamente IRPEF ordinaria + IVA 22%
   forfettarioCoeff: number;              // 78, 67, 86, 40
   cassaId: string;
   applyRivalsaInps: boolean;             // Rivalsa 4% per Gestione Separata
@@ -101,6 +103,10 @@ interface EmployeeBreakdown {
 
 interface PivaBreakdown {
   baseCompensation: number;
+  requestedRegime: PivaRegimeType;
+  effectiveRegime: PivaRegimeType;
+  isAutoSwitchedToOrdinario: boolean;
+  forfettarioThresholdUsed: number;
   rivalsaOrIntegrativeRatePct: number;
   rivalsaOrIntegrativeAmount: number;
   stampDutyAnnual: number;
@@ -732,7 +738,7 @@ class CostSimulationEngine {
       APP_CONFIG.FISCAL.CASSE_PREVIDENZIALI.find((c) => c.id === state.cassaId) ||
       APP_CONFIG.FISCAL.CASSE_PREVIDENZIALI[0];
 
-    const isForfettario =
+    const requestedIsForfettario =
       state.pivaRegime === 'FORFETTARIO_5' || state.pivaRegime === 'FORFETTARIO_15';
 
     // Rivalsa INPS 4% (se Gestione Separata e selezionata) oppure Contributo Integrativo Cassa (es. 4% Inarcassa)
@@ -744,11 +750,24 @@ class CostSimulationEngine {
     }
 
     const rivalsaOrIntegrativeAmount = safeComp * (rivalsaOrIntegrativeRatePct / 100);
-
-    // 12 fatture annue con marca da bollo da 2,00 € (solo in regime forfettario)
-    const stampDutyAnnual = isForfettario && safeComp > 0 ? APP_CONFIG.FISCAL.STAMP_DUTY_INVOICE * 12 : 0;
-
     const totalInvoiceTaxable = safeComp + rivalsaOrIntegrativeAmount;
+
+    // Verifica superamento soglia Regime Forfettario (85.000 € vigente o 100.000 € ipotesi riforma)
+    // Concorre alla soglia anche la Rivalsa INPS 4% addebitata in fattura
+    const threshold = state.forfettarioThreshold || APP_CONFIG.FISCAL.FORFETTARIO_LIMIT_CURRENT;
+    const isAutoSwitchedToOrdinario =
+      requestedIsForfettario &&
+      state.autoSwitchToOrdinarioOverThreshold &&
+      totalInvoiceTaxable > threshold;
+
+    const effectiveRegime: PivaRegimeType = isAutoSwitchedToOrdinario
+      ? 'ORDINARIO'
+      : state.pivaRegime;
+    const isForfettario =
+      effectiveRegime === 'FORFETTARIO_5' || effectiveRegime === 'FORFETTARIO_15';
+
+    // 12 fatture annue con marca da bollo da 2,00 € (solo se effettivamente in regime forfettario esente IVA)
+    const stampDutyAnnual = isForfettario && safeComp > 0 ? APP_CONFIG.FISCAL.STAMP_DUTY_INVOICE * 12 : 0;
 
     // IVA: 0% nel forfettario, 22% nell'ordinario
     const vatRatePct = isForfettario ? 0 : APP_CONFIG.FISCAL.STANDARD_VAT_RATE;
@@ -809,9 +828,9 @@ class CostSimulationEngine {
     const taxableIncomeForTax = Math.max(0, taxableRevenueForContributions - cassaContributions);
 
     let incomeTaxAmount = 0;
-    if (state.pivaRegime === 'FORFETTARIO_5') {
+    if (effectiveRegime === 'FORFETTARIO_5') {
       incomeTaxAmount = taxableIncomeForTax * 0.05;
-    } else if (state.pivaRegime === 'FORFETTARIO_15') {
+    } else if (effectiveRegime === 'FORFETTARIO_15') {
       incomeTaxAmount = taxableIncomeForTax * 0.15;
     } else {
       // Regime Ordinario IRPEF + Addizionali Regionali e Comunali
@@ -855,6 +874,10 @@ class CostSimulationEngine {
 
     return {
       baseCompensation: safeComp,
+      requestedRegime: state.pivaRegime,
+      effectiveRegime,
+      isAutoSwitchedToOrdinario,
+      forfettarioThresholdUsed: threshold,
       rivalsaOrIntegrativeRatePct,
       rivalsaOrIntegrativeAmount,
       stampDutyAnnual,
@@ -914,13 +937,72 @@ class CostSimulationEngine {
   }
 
   /**
-   * Ricerca binaria inversa per trovare il Compenso Base P.IVA che produce un determinato Target (Netto o Costo Azienda)
+   * Ricerca binaria inversa (a tratti monotoni) per trovare il Compenso Base P.IVA che produce
+   * un determinato Target (Netto o Costo Azienda), gestendo lo "scalino fiscale" (tax cliff)
+   * del passaggio automatico da Regime Forfettario a Regime Ordinario oltre 85.000 € / 100.000 €.
    */
   public static solvePivaBaseForTarget(
     target: number,
     targetType: 'WORKER_NET' | 'COMPANY_COST',
     state: SimulationInputState
   ): number {
+    const requestedIsForfettario =
+      state.pivaRegime === 'FORFETTARIO_5' || state.pivaRegime === 'FORFETTARIO_15';
+
+    // Se è attivo lo switch automatico oltre soglia Forfettario, dividiamo la ricerca nei due rami monotoni
+    if (requestedIsForfettario && state.autoSwitchToOrdinarioOverThreshold) {
+      const cassa =
+        APP_CONFIG.FISCAL.CASSE_PREVIDENZIALI.find((c) => c.id === state.cassaId) ||
+        APP_CONFIG.FISCAL.CASSE_PREVIDENZIALI[0];
+      const rivalsaRate =
+        cassa.id === 'GESTIONE_SEPARATA'
+          ? state.applyRivalsaInps
+            ? cassa.integrativeRate
+            : 0
+          : cassa.integrativeRate;
+
+      const threshold = state.forfettarioThreshold || APP_CONFIG.FISCAL.FORFETTARIO_LIMIT_CURRENT;
+      const maxForfettarioBase = Math.floor(threshold / (1 + rivalsaRate / 100));
+
+      const resAtMaxForfettario = this.calculatePiva(maxForfettarioBase, state);
+      const valAtMaxForfettario =
+        targetType === 'WORKER_NET'
+          ? resAtMaxForfettario.netAnnualCash
+          : resAtMaxForfettario.totalCompanyGrossCost;
+
+      if (target <= valAtMaxForfettario) {
+        // Ramo 1: interamente dentro il Regime Forfettario [0, maxForfettarioBase]
+        let low = 0;
+        let high = maxForfettarioBase;
+        for (let i = 0; i < 48; i++) {
+          const mid = (low + high) / 2;
+          const res = this.calculatePiva(mid, state);
+          const val = targetType === 'WORKER_NET' ? res.netAnnualCash : res.totalCompanyGrossCost;
+          if (val < target) {
+            low = mid;
+          } else {
+            high = mid;
+          }
+        }
+        return Math.round((low + high) / 2);
+      } else {
+        // Ramo 2: oltre la soglia Forfettario, interamente in Regime Ordinario [maxForfettarioBase + 1, max]
+        let low = maxForfettarioBase + 1;
+        let high = Math.max(500000, target * 3.5);
+        for (let i = 0; i < 48; i++) {
+          const mid = (low + high) / 2;
+          const res = this.calculatePiva(mid, state);
+          const val = targetType === 'WORKER_NET' ? res.netAnnualCash : res.totalCompanyGrossCost;
+          if (val < target) {
+            low = mid;
+          } else {
+            high = mid;
+          }
+        }
+        return Math.round((low + high) / 2);
+      }
+    }
+
     let low = 0;
     let high = Math.max(500000, target * 3.5);
     for (let i = 0; i < 48; i++) {
@@ -975,13 +1057,19 @@ class CostSimulationEngine {
     const notes: string[] = [];
     let riskScore: 'BASSO' | 'MEDIO' | 'ALTO' = 'BASSO';
 
-    if (
+    const thresholdLabel = formatEuro(piva.forfettarioThresholdUsed);
+    if (piva.isAutoSwitchedToOrdinario) {
+      riskScore = 'MEDIO';
+      notes.push(
+        `Scalino Fiscale Forfettario → Ordinario attivato: l'imponibile fatturato (${formatEuro(piva.totalInvoiceTaxable)}, inclusa eventuale rivalsa) supera la soglia di ${thresholdLabel}. Il simulatore ha applicato automaticamente le imposte e gli oneri del Regime Ordinario (IRPEF 23%-43%, Addizionali e IVA 22%).`
+      );
+    } else if (
       (state.pivaRegime === 'FORFETTARIO_5' || state.pivaRegime === 'FORFETTARIO_15') &&
-      piva.totalInvoiceTaxable > 85000
+      piva.totalInvoiceTaxable > piva.forfettarioThresholdUsed
     ) {
       riskScore = 'ALTO';
       notes.push(
-        `Attenzione: l'imponibile fatturato (${formatEuro(piva.totalInvoiceTaxable)}) supera la soglia di 85.000 € del Regime Forfettario (uscita dal regime dall'anno successivo, o immediata oltre 100.000 €).`
+        `Attenzione: l'imponibile fatturato (${formatEuro(piva.totalInvoiceTaxable)}) supera la soglia di ${thresholdLabel} del Regime Forfettario (uscita dal regime dall'anno successivo, o immediata oltre 100.000 €).`
       );
     }
 
@@ -1076,6 +1164,8 @@ class SimulatorAppController {
       pivaGrossAnnual: 40000,
       syncPivaToRal: true,
       pivaRegime: 'FORFETTARIO_15',
+      forfettarioThreshold: APP_CONFIG.FISCAL.FORFETTARIO_LIMIT_CURRENT,
+      autoSwitchToOrdinarioOverThreshold: true,
       forfettarioCoeff: 78,
       cassaId: 'GESTIONE_SEPARATA',
       applyRivalsaInps: true,
@@ -1150,12 +1240,18 @@ class SimulatorAppController {
   }
 
   private bindEvents(): void {
+    // Toggle pannello collassabile Visura Openapi.it (Opzionale)
+    document.getElementById('btn-toggle-visura-section')?.addEventListener('click', () => {
+      this.toggleVisuraSection();
+    });
+
     // Ricerca Partita IVA su Openapi.it
     const formVisura = document.getElementById('form-visura-search') as HTMLFormElement | null;
     formVisura?.addEventListener('submit', (e) => {
       e.preventDefault();
       const input = document.getElementById('input-company-vat') as HTMLInputElement | null;
       if (input) {
+        this.setVisuraSectionExpanded(true);
         void this.handleVisuraLookup(input.value);
       }
     });
@@ -1166,6 +1262,7 @@ class SimulatorAppController {
         const vat = btn.getAttribute('data-preset-vat') || '';
         const input = document.getElementById('input-company-vat') as HTMLInputElement | null;
         if (input) input.value = vat;
+        this.setVisuraSectionExpanded(true);
         void this.handleVisuraLookup(vat);
       });
     });
@@ -1309,6 +1406,14 @@ class SimulatorAppController {
     this.bindSelectOrInput('select-piva-regime', (v) => {
       this.state.pivaRegime = v as PivaRegimeType;
       this.updatePivaRegimeUiVisibility();
+    });
+    this.bindSelectOrInput('select-forfettario-threshold', (v) => {
+      this.state.forfettarioThreshold = parseInt(v, 10) || APP_CONFIG.FISCAL.FORFETTARIO_LIMIT_CURRENT;
+    });
+    const checkAutoSwitch = document.getElementById('check-auto-switch-ordinario') as HTMLInputElement | null;
+    checkAutoSwitch?.addEventListener('change', () => {
+      this.state.autoSwitchToOrdinarioOverThreshold = checkAutoSwitch.checked;
+      this.recalculateAndRender();
     });
     this.bindSelectOrInput('select-forfettario-coeff', (v) => {
       this.state.forfettarioCoeff = parseInt(v, 10) || 78;
@@ -1477,6 +1582,9 @@ class SimulatorAppController {
     if (checkTfr) checkTfr.checked = this.state.includeTfrInWorkerBenefit;
 
     this.setElementValue('select-piva-regime', this.state.pivaRegime);
+    this.setElementValue('select-forfettario-threshold', this.state.forfettarioThreshold);
+    const checkAutoOrd = document.getElementById('check-auto-switch-ordinario') as HTMLInputElement | null;
+    if (checkAutoOrd) checkAutoOrd.checked = this.state.autoSwitchToOrdinarioOverThreshold;
     this.setElementValue('select-forfettario-coeff', this.state.forfettarioCoeff);
     this.setElementValue('select-cassa', this.state.cassaId);
     this.setElementValue('input-piva-expenses', this.state.pivaDeductibleExpenses);
@@ -1495,9 +1603,36 @@ class SimulatorAppController {
     if (coeffWrapper) {
       coeffWrapper.style.opacity = isForfettario ? '1' : '0.45';
     }
+    const thresholdWrapper = document.getElementById('wrapper-forfettario-threshold');
+    if (thresholdWrapper) {
+      thresholdWrapper.style.display = isForfettario ? 'block' : 'none';
+    }
     const rivalsaWrapper = document.getElementById('wrapper-rivalsa-inps');
     if (rivalsaWrapper) {
       rivalsaWrapper.style.display = this.state.cassaId === 'GESTIONE_SEPARATA' ? 'flex' : 'none';
+    }
+  }
+
+  private toggleVisuraSection(): void {
+    const body = document.getElementById('visura-collapsible-body');
+    if (!body) return;
+    const isHidden = body.classList.contains('hidden');
+    this.setVisuraSectionExpanded(isHidden);
+  }
+
+  private setVisuraSectionExpanded(expanded: boolean): void {
+    const body = document.getElementById('visura-collapsible-body');
+    const chevron = document.getElementById('visura-chevron-icon');
+    const toggleLabel = document.getElementById('visura-toggle-label');
+    if (!body) return;
+    if (expanded) {
+      body.classList.remove('hidden');
+      chevron?.classList.add('rotate-180');
+      if (toggleLabel) toggleLabel.textContent = 'Nascondi pannello';
+    } else {
+      body.classList.add('hidden');
+      chevron?.classList.remove('rotate-180');
+      if (toggleLabel) toggleLabel.textContent = 'Espandi (Opzionale)';
     }
   }
 
@@ -1702,6 +1837,36 @@ class SimulatorAppController {
       this.setElementValue('slider-employee-ral', emp.ral);
       this.setElementValue('input-piva-gross', piva.baseCompensation);
       this.setElementValue('slider-piva-gross', piva.baseCompensation);
+    }
+
+    // Banner avviso passaggio automatico da Forfettario a Regime Ordinario oltre soglia (85k / 100k)
+    const switchBanner = document.getElementById('banner-auto-ordinario-switch');
+    const switchBannerText = document.getElementById('banner-auto-ordinario-text');
+    const pivaRegimeBadge = document.getElementById('badge-piva-active-regime');
+    if (switchBanner) {
+      if (piva.isAutoSwitchedToOrdinario) {
+        switchBanner.classList.remove('hidden');
+        if (switchBannerText) {
+          switchBannerText.textContent = `Imponibile fattura (${formatEuro(piva.totalInvoiceTaxable)}, inclusa rivalsa) oltre la soglia Forfettario di ${formatEuro(piva.forfettarioThresholdUsed)}: applicate automaticamente imposte e oneri del Regime Ordinario (IRPEF 23%-43%, Addizionali e IVA 22%).`;
+        }
+      } else {
+        switchBanner.classList.add('hidden');
+      }
+    }
+    if (pivaRegimeBadge) {
+      if (piva.isAutoSwitchedToOrdinario) {
+        pivaRegimeBadge.textContent = `Ordinario (Soglia >${formatNumber(piva.forfettarioThresholdUsed / 1000, 0)}k€)`;
+        pivaRegimeBadge.className = 'px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300';
+      } else if (piva.effectiveRegime === 'FORFETTARIO_5') {
+        pivaRegimeBadge.textContent = 'Forfettario 5%';
+        pivaRegimeBadge.className = 'px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700';
+      } else if (piva.effectiveRegime === 'FORFETTARIO_15') {
+        pivaRegimeBadge.textContent = 'Forfettario 15%';
+        pivaRegimeBadge.className = 'px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700';
+      } else {
+        pivaRegimeBadge.textContent = 'Regime Ordinario IRPEF';
+        pivaRegimeBadge.className = 'px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-700';
+      }
     }
 
     // 1. KPI Executive Cards

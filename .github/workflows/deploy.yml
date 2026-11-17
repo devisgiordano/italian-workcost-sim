@@ -40,7 +40,7 @@ jobs:
       - name: Prepare static site artifact
         run: |
           mkdir -p dist
-          cp index.html config.js app.js config.local.example.js LICENSE README.md dist/
+          cp index.html config.js i18n.js app.js config.local.example.js LICENSE README.md dist/
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5

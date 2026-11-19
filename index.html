@@ -41,42 +41,42 @@
     }
   </style>
 </head>
-<body class="min-h-screen antialiased selection:bg-indigo-600 selection:text-white">
+<body class="min-h-screen overflow-x-hidden antialiased selection:bg-indigo-600 selection:text-white">
 
   <!-- TOP NAVBAR -->
   <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap lg:flex-nowrap items-center justify-between gap-3">
-      <div class="flex items-center gap-3 min-w-0">
-        <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-extrabold text-lg shadow-xs shrink-0">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3.5 flex flex-wrap lg:flex-nowrap items-center justify-between gap-2 sm:gap-3">
+      <div class="flex items-center gap-2.5 sm:gap-3 min-w-0 w-full lg:w-auto">
+        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-extrabold text-base sm:text-lg shadow-xs shrink-0">
           €
         </div>
-        <div class="min-w-0">
-          <h1 class="text-lg sm:text-xl font-extrabold tracking-tight text-slate-900">
-            Italian WorkCost <span class="text-indigo-600">Sim</span> <span class="text-slate-300 font-normal mx-1">|</span> <span data-i18n="header.subtitle_role" class="text-base sm:text-lg font-bold text-slate-700">Dipendente vs Partita IVA</span>
+        <div class="min-w-0 flex-1">
+          <h1 class="text-sm sm:text-xl font-extrabold tracking-tight text-slate-900 leading-snug">
+            Italian WorkCost <span class="text-indigo-600">Sim</span> <span class="text-slate-300 font-normal mx-1">|</span> <span data-i18n="header.subtitle_role" class="text-xs sm:text-lg font-bold text-slate-700">Dipendente vs Partita IVA</span>
           </h1>
-          <p data-i18n-html="header.subtitle_desc" class="text-xs text-slate-500">
+          <p data-i18n-html="header.subtitle_desc" class="hidden sm:block text-xs text-slate-500">
             Analisi comparativa fiscale, INPS/INAIL/TFR, Cuneo Fiscale e calibrazione su Visura Camerale <span class="font-semibold text-slate-700">Openapi.it</span>
           </p>
         </div>
       </div>
 
-      <div class="flex flex-wrap sm:flex-nowrap items-center justify-end gap-2 ml-auto shrink-0 no-print">
-        <span id="api-status-indicator" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300 whitespace-nowrap">
+      <div class="w-full lg:w-auto flex flex-wrap items-center justify-end gap-1.5 sm:gap-2 lg:ml-auto no-print">
+        <span id="api-status-indicator" class="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300 whitespace-nowrap">
           <span class="w-2 h-2 rounded-full bg-amber-500"></span> Modalità Sandbox
         </span>
-        <button id="btn-open-api-modal" data-i18n="header.btn_api_config" type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition whitespace-nowrap cursor-pointer">
+        <button id="btn-open-api-modal" data-i18n="header.btn_api_config" type="button" class="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition whitespace-nowrap cursor-pointer">
           ⚙ Configura API Key
         </button>
-        <button id="btn-export-json" data-i18n="header.btn_export_json" type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 transition whitespace-nowrap cursor-pointer">
+        <button id="btn-export-json" data-i18n="header.btn_export_json" type="button" class="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 transition whitespace-nowrap cursor-pointer">
           ⇩ JSON
         </button>
-        <button id="btn-print-report" data-i18n="header.btn_print" type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white transition whitespace-nowrap cursor-pointer">
+        <button id="btn-print-report" data-i18n="header.btn_print" type="button" class="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white transition whitespace-nowrap cursor-pointer">
           🖨 Stampa / PDF
         </button>
         <select
           id="select-language"
           aria-label="Lingua / Language"
-          class="ml-0.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 focus:border-indigo-600 focus:outline-none transition whitespace-nowrap cursor-pointer"
+          class="ml-auto sm:ml-0.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 focus:border-indigo-600 focus:outline-none transition whitespace-nowrap cursor-pointer"
         >
           <option value="it">Italiano</option>
           <option value="en">English</option>
@@ -91,45 +91,45 @@
   </header>
 
   <!-- MAIN CONTENT CONTAINER -->
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+  <main class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
 
     <!-- SEZIONE 1: SELETTORE MODALITÀ DI CONFRONTO (OBIETTIVO DELLA SIMULAZIONE) -->
-    <section id="section-simulation-mode" class="bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 space-y-3 sticky z-20 no-print transition-all">
-      <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
-        <h3 data-i18n="sim_mode.title" class="text-sm font-extrabold uppercase tracking-wider text-slate-800">
+    <section id="section-simulation-mode" class="bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200 shadow-sm p-3 sm:p-5 space-y-2 sm:space-y-3 sticky z-20 no-print transition-all">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-1.5 sm:pb-2.5">
+        <h3 data-i18n="sim_mode.title" class="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-slate-800">
           Obiettivo della Simulazione
         </h3>
       </div>
 
-      <p data-i18n="sim_mode.desc" class="text-xs text-slate-600 leading-relaxed">
+      <p data-i18n="sim_mode.desc" class="hidden sm:block text-xs text-slate-600 leading-relaxed">
         Scegli se confrontare una RAL/Compenso specifico, oppure calcolare a ritroso i costi a parità di Netto per il lavoratore o di Budget aziendale.
       </p>
 
-      <!-- Bottoni allineati orizzontalmente in fondo al div -->
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
-        <button type="button" data-sim-mode="PARITA_LORDO" data-i18n="sim_mode.btn_1" class="sim-mode-btn w-full px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-center transition-all cursor-pointer">
+      <!-- Bottoni allineati orizzontalmente in fondo al div (3 colonne sia su mobile che desktop) -->
+      <div class="grid grid-cols-3 gap-1.5 sm:gap-2.5 pt-0.5 sm:pt-1">
+        <button type="button" data-sim-mode="PARITA_LORDO" data-i18n="sim_mode.btn_1" class="sim-mode-btn w-full px-2 py-2 sm:px-3 sm:py-2.5 rounded-xl text-[11px] sm:text-sm leading-tight font-semibold text-center flex items-center justify-center transition-all cursor-pointer">
           1. Input Diretto (RAL vs Compenso P.IVA)
         </button>
-        <button type="button" data-sim-mode="PARITA_NETTO" data-i18n="sim_mode.btn_2" class="sim-mode-btn w-full px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-center transition-all cursor-pointer">
+        <button type="button" data-sim-mode="PARITA_NETTO" data-i18n="sim_mode.btn_2" class="sim-mode-btn w-full px-2 py-2 sm:px-3 sm:py-2.5 rounded-xl text-[11px] sm:text-sm leading-tight font-semibold text-center flex items-center justify-center transition-all cursor-pointer">
           2. A Parità di Netto Lavoratore
         </button>
-        <button type="button" data-sim-mode="PARITA_COSTO_AZIENDA" data-i18n="sim_mode.btn_3" class="sim-mode-btn w-full px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-center transition-all cursor-pointer">
+        <button type="button" data-sim-mode="PARITA_COSTO_AZIENDA" data-i18n="sim_mode.btn_3" class="sim-mode-btn w-full px-2 py-2 sm:px-3 sm:py-2.5 rounded-xl text-[11px] sm:text-sm leading-tight font-semibold text-center flex items-center justify-center transition-all cursor-pointer">
           3. A Parità di Budget Aziendale
         </button>
       </div>
 
       <!-- Box Input Target (visibile in modalità 2 e 3) -->
-      <div id="box-target-mode" class="hidden mt-3 pt-3 border-t border-slate-200 bg-indigo-50/50 rounded-xl p-3.5">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div class="space-y-1">
-            <label id="label-target-value" for="input-target-value" class="block text-sm font-bold text-indigo-950">
+      <div id="box-target-mode" class="hidden mt-2 pt-2 sm:mt-3 sm:pt-3 border-t border-slate-200 bg-indigo-50/50 rounded-xl p-2.5 sm:p-3.5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
+          <div class="space-y-0.5 sm:space-y-1">
+            <label id="label-target-value" for="input-target-value" class="block text-xs sm:text-sm font-bold text-indigo-950">
               Target Netto Annuo Lavoratore desiderato (€)
             </label>
-            <p data-i18n="sim_mode.target_desc" class="text-xs text-indigo-700">
+            <p data-i18n="sim_mode.target_desc" class="hidden sm:block text-xs text-indigo-700">
               Il motore calcola automaticamente la RAL Dipendente e il Fatturato P.IVA necessari per centrare esattamente questo obiettivo.
             </p>
           </div>
-          <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
             <input
               id="slider-target-value"
               type="range"
@@ -137,9 +137,9 @@
               max="180000"
               step="500"
               value="35000"
-              class="w-40 sm:w-56"
+              class="flex-1 min-w-0 sm:w-56"
             />
-            <div class="relative">
+            <div class="relative shrink-0">
               <input
                 id="input-target-value"
                 type="number"
@@ -147,7 +147,7 @@
                 max="500000"
                 step="500"
                 value="35000"
-                class="w-36 rounded-xl border border-indigo-300 bg-white px-3 py-2 text-right font-mono text-base font-bold text-indigo-900 focus:border-indigo-600 focus:outline-none"
+                class="w-28 sm:w-36 rounded-xl border border-indigo-300 bg-white px-2.5 py-1.5 sm:px-3 sm:py-2 text-right font-mono text-sm sm:text-base font-bold text-indigo-900 focus:border-indigo-600 focus:outline-none"
               />
             </div>
           </div>
@@ -188,8 +188,8 @@
             Interroga <code>company.openapi.com</code> tramite P.IVA o Codice Fiscale oppure seleziona un'azienda di test preconfigurata:
           </p>
 
-          <form id="form-visura-search" class="flex flex-wrap sm:flex-nowrap items-center gap-2 no-print">
-            <select id="select-openapi-endpoint" class="rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 focus:border-indigo-500 focus:outline-none" title="Endpoint Openapi.it">
+          <form id="form-visura-search" class="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full lg:w-auto no-print">
+            <select id="select-openapi-endpoint" class="w-full sm:w-auto rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 focus:border-indigo-500 focus:outline-none" title="Endpoint Openapi.it">
               <option value="/IT-advanced" data-i18n="visura.endpoint_adv">GET /IT-advanced (Bilancio + ATECO)</option>
               <option value="/IT-full" data-i18n="visura.endpoint_full">GET /IT-full (Completo + KPI/EBITDA)</option>
               <option value="/IT-marketing" data-i18n="visura.endpoint_mkt">GET /IT-marketing (Marketing + Dipendenti)</option>
@@ -201,7 +201,7 @@
               data-i18n-placeholder="visura.input_placeholder"
               placeholder="Es. 12485671007"
               maxlength="16"
-              class="w-44 sm:w-52 rounded-xl border border-slate-300 px-3.5 py-2 text-sm font-mono text-slate-900 placeholder:text-slate-400 focus:border-indigo-600 focus:outline-none"
+              class="flex-1 min-w-0 sm:w-52 rounded-xl border border-slate-300 px-3.5 py-2 text-sm font-mono text-slate-900 placeholder:text-slate-400 focus:border-indigo-600 focus:outline-none"
             />
             <button
               id="btn-search-visura"

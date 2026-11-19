@@ -1550,10 +1550,10 @@ class SimulatorAppController {
       const m = btn.getAttribute('data-sim-mode');
       if (m === this.state.mode) {
         btn.className =
-          'sim-mode-btn w-full px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-center transition-all bg-indigo-600 text-white shadow-sm cursor-pointer';
+          'sim-mode-btn w-full px-2 py-2 sm:px-3 sm:py-2.5 rounded-xl text-[11px] sm:text-sm leading-tight font-semibold text-center flex items-center justify-center transition-all bg-indigo-600 text-white shadow-sm cursor-pointer';
       } else {
         btn.className =
-          'sim-mode-btn w-full px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-center transition-all bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer';
+          'sim-mode-btn w-full px-2 py-2 sm:px-3 sm:py-2.5 rounded-xl text-[11px] sm:text-sm leading-tight font-semibold text-center flex items-center justify-center transition-all bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer';
       }
     });
 
@@ -2349,11 +2349,11 @@ class SimulatorAppController {
     const settings = this.apiService.getSettings();
     if (this.apiService.hasValidCustomToken()) {
       badge.className =
-        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300 whitespace-nowrap';
+        'hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300 whitespace-nowrap';
       badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-600"></span> ${I18N.t('header.status_token_active', { env: settings.ENVIRONMENT })}`;
     } else {
       badge.className =
-        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300 whitespace-nowrap';
+        'hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300 whitespace-nowrap';
       badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500"></span> ${I18N.t('header.status_sandbox')}`;
     }
   }
